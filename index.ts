@@ -19,6 +19,7 @@ import { configure } from "@atomist/sdm-core";
 import { HelloWorldGoalConfigurer } from "./lib/goals/goalConfigurer";
 import { HelloWorldGoalCreator } from "./lib/goals/goalCreator";
 import { HelloWorldGoals } from "./lib/goals/goals";
+import {isFluxSiteRepo, msgGoal, shouldRebuildSite} from "./lib/machine";
 
 /**
  * The main entry point into the SDM
@@ -35,13 +36,26 @@ export const configuration = configure<HelloWorldGoals>(async sdm => {
     });
 
     // Create goals and configure them
-    const goals = await sdm.createGoals(HelloWorldGoalCreator, [HelloWorldGoalConfigurer]);
+    // const goals = await sdm.createGoals(HelloWorldGoalCreator, [HelloWorldGoalConfigurer]);
+    // console.log(goals);
 
     // Return all push rules
     return {
-        hello: {
-            test: AnyPush,
-            goals: goals.helloWorld,
+        // hello: {
+        //     test: AnyPush,
+        //     goals: goals.helloWorld,
+        // },
+        testMsg: {
+            test: shouldRebuildSite,
+            goals: [msgGoal],
+        },
+        websiteBuildPreview: {
+            test: [
+                isFluxSiteRepo,
+            ],
+            goals: [
+                // buildWebsite,
+            ]
         },
     };
 });
