@@ -1,5 +1,4 @@
 import {filesChangedSince, goal, GoalInvocation, PushListenerInvocation, pushTest} from "@atomist/sdm";
-import {  } from "@atomist/sdm-pack-docker";
 
 export const msgGoal = goal(
     {
@@ -32,6 +31,6 @@ export const buildWebsite = goal(
     { displayName: "Build the Flux Website" },
     async gi => {
 
-    }
+    },
 );
 

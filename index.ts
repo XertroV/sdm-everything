@@ -14,10 +14,7 @@
  * limitations under the License.
  */
 
-import { AnyPush } from "@atomist/sdm";
 import { configure } from "@atomist/sdm-core";
-import { HelloWorldGoalConfigurer } from "./lib/goals/goalConfigurer";
-import { HelloWorldGoalCreator } from "./lib/goals/goalCreator";
 import { HelloWorldGoals } from "./lib/goals/goals";
 import {isFluxSiteRepo, msgGoal, shouldRebuildSite} from "./lib/machine";
 
@@ -55,7 +52,7 @@ export const configuration = configure<HelloWorldGoals>(async sdm => {
             ],
             goals: [
                 // buildWebsite,
-            ]
+            ],
         },
     };
 });
