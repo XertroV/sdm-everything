@@ -1,4 +1,4 @@
-import {filesChangedSince, goal, GoalInvocation, PushListenerInvocation, pushTest} from "@atomist/sdm";
+import { filesChangedSince, goal, GoalInvocation, PushListenerInvocation, pushTest, ProjectAwareGoalInvocation, doWithProject } from "@atomist/sdm";
 
 export const msgGoal = goal(
     {
@@ -22,15 +22,32 @@ export const shouldRebuildSite = pushTest(
 
 export const isFluxSiteRepo = pushTest(
     "isFluxSiteRepo",
-    async pli => {
-        return pli.push.repo?.org === "voteflux" && pli.push.repo.name === "flux-website-v2";
+    async (pli: PushListenerInvocation) => {
+        return pli.push.repo?.org === "voteflux" && pli.push.repo?.name === "flux-website-v2";
     },
 );
 
 export const buildWebsite = goal(
     { displayName: "Build the Flux Website" },
-    async gi => {
-
+    async (gi: GoalInvocation) => {
+        doWithProject(async (action: ProjectAwareGoalInvocation) => {
+            var res = await action.spawn("jekyll build");
+            if (res.code !== 0) {
+                await action.addressChannels({
+                    text: `--stdout:--\n\n${res.stdout}\n\n--stderr:--\n\n${res.stderr}`,
+                    fileName: `jekyll-build-${Date.now()}`,
+                    fileType: `txt`,
+                    title: `Jekyll build failed; status: ${res.code}`
+                })
+            } else {
+                await action.addressChannels({
+                    title: `Jekyll build succeeded!`,
+                    text: res.stdout,
+                    fileName: `jekyll-build-${Date.now()}`,
+                    fileType: `txt`,
+                })
+            }
+        })
     },
 );
 
