@@ -16,7 +16,7 @@
 
 import { configure } from "@atomist/sdm-core";
 import { HelloWorldGoals } from "./lib/goals/goals";
-import {isFluxSiteRepo, msgGoal, shouldRebuildSite} from "./lib/machine";
+import {isFluxSiteRepo, msgGoal, shouldRebuildSite, buildWebsite} from "./lib/machine";
 
 /**
  * The main entry point into the SDM
@@ -51,7 +51,7 @@ export const configuration = configure<HelloWorldGoals>(async sdm => {
                 isFluxSiteRepo,
             ],
             goals: [
-                // buildWebsite,
+                buildWebsite,
             ],
         },
     };
