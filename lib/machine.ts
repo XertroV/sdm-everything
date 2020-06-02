@@ -58,6 +58,8 @@ export const buildWebsite = goal(
                 fileType: `txt`,
             })
         }
+        
+        return { code: res.code }
     })
 );
 
