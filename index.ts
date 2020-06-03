@@ -27,6 +27,7 @@ export const configuration = configure<HelloWorldGoals>(async sdm => {
     sdm.addCommand({
         name: "HelloWorld",
         description: "Command that responds with a 'hello world'",
+        intent: "flux-hello",
         listener: async ci => {
             await ci.addressChannels("Hello World");
         },
@@ -42,15 +43,17 @@ export const configuration = configure<HelloWorldGoals>(async sdm => {
         //     test: AnyPush,
         //     goals: goals.helloWorld,
         // },
-        testMsg: {
-            test: shouldRebuildSite,
-            goals: [msgGoal],
-        },
-        websiteBuildPreview: {
+        // testMsg: {
+        //     test: [],
+        //     goals: [],
+        // },
+        websiteBuild: {
             test: [
                 isFluxSiteRepo,
+                shouldRebuildSite
             ],
             goals: [
+                msgGoal,
                 buildWebsite,
             ],
         },
