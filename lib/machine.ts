@@ -1,8 +1,11 @@
-import { filesChangedSince, goal, GoalInvocation, PushListenerInvocation, pushTest, ProjectAwareGoalInvocation, doWithProject, spawnPromise, WritableLog, WriteToAllProgressLog, LoggingProgressLog, addressChannelsProgressLog, StringCapturingProgressLog } from "@atomist/sdm";
+import { filesChangedSince, goal, GoalInvocation, PushListenerInvocation, pushTest, ProjectAwareGoalInvocation, doWithProject, spawnPromise, WritableLog, WriteToAllProgressLog, LoggingProgressLog, addressChannelsProgressLog, StringCapturingProgressLog, ExecuteGoalResult } from "@atomist/sdm";
 import { isInLocalMode } from "@atomist/sdm-core";
 
 import {Octokit} from "@octokit/rest";
 import { TokenCredentials } from "@atomist/automation-client";
+
+import * as AWS from 'aws-sdk';
+
 
 export const msgGoal = goal(
     {
@@ -138,7 +141,61 @@ export const buildWebsite = goal(
             })
         }
         
-        return { code: res.status !== 0 ? (res.status || -1) : res.status }; // { code: res.code }
+        return { code: res.status !== 0 ? (res.status || -1) : res.status } as ExecuteGoalResult; // { code: res.code }
     })
 );
 
+
+const mkCallerRef = () => `${Date.now()}`;
+
+
+const deployWebsite = goal(
+    { displayName: "Deploy Website Preview", uniqueName: "deploy-website-preview" },
+    doWithProject(async (pa: ProjectAwareGoalInvocation) => {
+        const shaFrag = pa.goalEvent.sha.slice(0,7);
+        const cf = new AWS.CloudFront();
+        const originId = `S3-preview-website-origin-${shaFrag}`;
+        const origin = await cf.createCloudFrontOriginAccessIdentity({
+            CloudFrontOriginAccessIdentityConfig: {CallerReference: mkCallerRef(), Comment: `S3-origin-preview-${shaFrag}`}
+        })
+        const distrib = await cf.createDistribution({
+            DistributionConfig: {
+                CallerReference: mkCallerRef(),
+                Comment: `S3-flux-website-preview-${shaFrag}`,
+                DefaultCacheBehavior: {
+                    ForwardedValues: {
+                        QueryString: false,
+                        Cookies: {Forward: 'none'},
+                    },
+                    TargetOriginId: originId,
+                    TrustedSigners: {
+                        Enabled: false,
+                        Quantity: 0
+                    },
+                    ViewerProtocolPolicy: "redirect-to-https",
+                    MinTTL: 600,
+                },
+                Origins: {
+                    Quantity: 1,
+                    Items: [
+                        { 
+                            OriginPath: `/${shaFrag}/`,
+                            DomainName: `preview.flx.dev.s3-website-ap-southeast-2.amazonaws.com`,
+                            Id: originId,
+                            S3OriginConfig: {
+                                OriginAccessIdentity: "",
+                            }// as AWS.CloudFront.S3OriginConfig
+                        }// as AWS.CloudFront.Origin
+                    ]
+                },
+                Enabled: true,
+                // ViewerProtocolPolicy: "redirect-to-https"
+            }
+        }// as AWS.CloudFront.CreateDistributionRequest
+        , (err, val) => {});
+        // aws s3 sync _site/ s3://preview.flx.dev/test/ --acl public-read --expires $(expr $(date +%s) + $(expr 7 \* 86400))
+        // aws configure set preview.cloudfront true && aws cloudfront create-invalidation --distribution-id <dist-id> --paths /index.html
+    })
+)
+
+// const websitePrListener = 

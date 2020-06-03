@@ -13,8 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import * as path from 'path';
+import * as os from 'os';
 
-import { configure } from "@atomist/sdm-core";
+ import { configure, CompressingGoalCache } from "@atomist/sdm-core";
 import { HelloWorldGoals } from "./lib/goals/goals";
 import {isFluxSiteRepo, msgGoal, shouldRebuildSite, buildWebsite} from "./lib/machine";
 
@@ -22,6 +24,12 @@ import {isFluxSiteRepo, msgGoal, shouldRebuildSite, buildWebsite} from "./lib/ma
  * The main entry point into the SDM
  */
 export const configuration = configure<HelloWorldGoals>(async sdm => {
+
+    sdm.configuration.sdm.cache = {
+        enabled: true,
+        path: path.join(os.homedir(), ".atomist", "cache"),
+        store: new CompressingGoalCache()
+    }
 
     // Use the sdm instance to configure commands etc
     sdm.addCommand({

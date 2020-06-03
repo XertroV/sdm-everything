@@ -1,5 +1,5 @@
 {
-  "name": "@voteflux/sdm-website",
+  "name": "@voteflux/sdm-everything",
   "version": "0.1.0",
   "description": "my new project",
   "author": {
@@ -7,13 +7,13 @@
     "email": "m@xk.io"
   },
   "license": "Apache-2.0",
-  "homepage": "https://github.com/voteflux/sdm-website#readme",
+  "homepage": "https://github.com/voteflux/sdm-everything#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/voteflux/sdm-website.git"
+    "url": "https://github.com/voteflux/sdm-everything.git"
   },
   "bugs": {
-    "url": "https://github.com/voteflux/sdm-website/issues"
+    "url": "https://github.com/voteflux/sdm-everything/issues"
   },
   "keywords": [
     "atomist",
@@ -26,7 +26,8 @@
     "@atomist/automation-client": "1.8.0-master.20191107225525",
     "@atomist/sdm": "1.8.0-dynamic-goals.20191108140247",
     "@atomist/sdm-core": "1.8.0-dynamic-goals.20191108152504",
-    "@atomist/slack-messages": "^1.1.1"
+    "@atomist/slack-messages": "^1.1.1",
+    "aws-sdk": "^2.688.0"
   },
   "devDependencies": {
     "@atomist/sdm-local": "1.2.2-master.20191011215150",
