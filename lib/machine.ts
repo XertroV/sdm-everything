@@ -14,9 +14,9 @@ import {
 import { isInLocalMode } from "@atomist/sdm-core";
 import {Build, spawnBuilder} from "@atomist/sdm-pack-build";
 
-import {GitProject, logger, Project, RemoteRepoRef, TokenCredentials} from "@atomist/automation-client";
+import {GitProject, logger, Project, RemoteRepoRef} from "@atomist/automation-client";
 import {AppInfo} from "@atomist/sdm/lib/spi/deploy/Deployment";
-import {Octokit} from "@octokit/rest";
+// import {Octokit} from "@octokit/rest";
 
 import {PublishToS3} from "@atomist/sdm-pack-s3";
 
@@ -92,10 +92,10 @@ export const buildWebsiteOld = goal(
     doWithProject(async (gi: ProjectAwareGoalInvocation) => {
         const GH_ACTION_NAME = "jekyll-build";
 
-        const ghToken = (gi.credentials as TokenCredentials).token;
-        const gh = new Octokit({auth: `token ${ghToken}`});
+        // const ghToken = (gi.credentials as TokenCredentials).token;
+        // const gh = new Octokit({auth: `token ${ghToken}`});
         const startTS = new Date();
-        await setGhCheckStatus({gh: gh, name: GH_ACTION_NAME, gi: gi, status: "in_progress", conclusion: undefined, startTS: startTS} );
+        await setGhCheckStatus({name: GH_ACTION_NAME, gi, status: "in_progress", conclusion: undefined, startTS} );
 
         const collectStdOut = new StringCapturingProgressLog();
         const allLogs = new WriteToAllProgressLog(
@@ -121,13 +121,12 @@ export const buildWebsiteOld = goal(
 
         // const gh = githubApi((action.credentials as TokenCredentials).token)
         await setGhCheckStatus({
-            gh: gh,
             name: GH_ACTION_NAME,
-            gi: gi,
+            gi,
             status: "completed",
             conclusion: didError ? "failure" : "success",
-            startTS: startTS,
-            endTS: endTS,
+            startTS,
+            endTS,
             output: didError ? {
                 title: `Jekyll Build Failed`,
                 summary: res.error?.name || "No error name found",
@@ -136,7 +135,7 @@ export const buildWebsiteOld = goal(
                 title: `Jekyll Build Succeeded`,
                 summary: collectStdOut.log.split("\n").reverse()[0],
                 text: collectStdOut.log,
-            }
+            },
         });
 
         const logFileName = `jekyll-build-${Date.now()}-${gi.goalEvent.sha.slice(0, 8)}`;
@@ -195,6 +194,7 @@ export const publishSitePreview = new PublishToS3({
     filesToPublish: ["_site/**/*"],
     pathTranslation: (filepath, gi) => filepath.replace(/^_site/, `${gi.goalEvent.sha.slice(0, 7)}`),
     pathToIndex: "_site/", // index file in your project
+    linkLabel: "S3 Link",
 });
 
 export const makeCloudFrontDistribution = goal(
@@ -259,7 +259,12 @@ export const makeCloudFrontDistribution = goal(
         // do this for the moment (always use cloudfront domain) to avoid needing to do R53 stuff
         const distribUrl = distrib.Distribution?.DomainName ||
             get(distrib.Distribution?.DistributionConfig.Aliases?.Items, 0, distrib.Distribution?.DomainName);
-        return { code: 0, externalUrls: [ {label: `Deploy Preview for ${shaFrag}`, url: `https://${distribUrl}`} ] };
+        const resultMessageCustomDomains = distrib.Distribution?.DistributionConfig.Aliases?.Items?.map(cname => `## Deployed to: <https://${cname}>`);
+        return {
+            code: 0,
+            externalUrls: [ {label: `>> Deploy Preview: ${shaFrag} <<`, url: `https://${distribUrl}`} ],
+            message: `# Success\n\n## CloudFront URL: <${distribUrl}>\n\n${resultMessageCustomDomains?.join("\n\n") || ""}`,
+        };
     }),
 );
 

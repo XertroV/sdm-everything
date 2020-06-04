@@ -10,6 +10,7 @@ import {
 import {isInLocalMode} from "@atomist/sdm-core";
 import {SdmGoalState} from "@atomist/sdm/lib/typings/types";
 import {Octokit} from "@octokit/rest";
+import {get} from "lodash";
 
 export const mkGithubCheckOutput = (title: string, summary: string, text: string) => {
     return { title, summary, text };
@@ -18,7 +19,6 @@ export const mkGithubCheckOutput = (title: string, summary: string, text: string
 type CheckStatsPs = Octokit.ChecksCreateParams & Octokit.RequestOptions;
 
 interface GhCheckStatusOpts {
-    gh: Octokit;
     name: string;
     gi: GoalExecutionListenerInvocation;
     status: CheckStatsPs["status"];
@@ -29,7 +29,10 @@ interface GhCheckStatusOpts {
 }
 
 export const setGhCheckStatus =
-    async ({gh, name, gi, status, conclusion, startTS, endTS, output}: GhCheckStatusOpts) => {
+    async ({name, gi, status, conclusion, startTS, endTS, output}: GhCheckStatusOpts) => {
+    const ghToken = (gi.credentials as TokenCredentials).token;
+    const gh = new Octokit({auth: `token ${ghToken}`});
+
     if (isInLocalMode()) {
         logger.warn(`(Local mode) Skipping GitHub check: ${name}. New status: ${status}. Conclusion: ${conclusion}`);
         return undefined;
@@ -46,7 +49,7 @@ export const setGhCheckStatus =
         name,
         repo: gi.goalEvent.repo.name,
         owner: gi.goalEvent.repo.owner,
-        details_url: gi.goalEvent.url,
+        details_url: get(gi.goalEvent.externalUrls, 0, gi.goalEvent).url,
         external_id: gi.context.correlationId,
         status,
         started_at: startTS.toISOString(),
@@ -62,8 +65,8 @@ export const GithubChecksListener: GoalExecutionListener = async (geli: GoalExec
 
     const startTS = new Date();
 
-    const ghToken = (geli.credentials as TokenCredentials).token;
-    const gh = new Octokit({auth: `token ${ghToken}`});
+    // const ghToken = (geli.credentials as TokenCredentials).token;
+    // const gh = new Octokit({auth: `token ${ghToken}`});
 
     let out: {
         status: CheckStatsPs["status"],
@@ -88,7 +91,6 @@ export const GithubChecksListener: GoalExecutionListener = async (geli: GoalExec
 
     const endTS = new Date();
     await setGhCheckStatus({
-        gh,
         name: geli.goal.name,
         gi: geli,
         status: out.status,
