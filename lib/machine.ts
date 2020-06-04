@@ -95,7 +95,7 @@ export const buildWebsiteOld = goal(
         const ghToken = (gi.credentials as TokenCredentials).token;
         const gh = new Octokit({auth: `token ${ghToken}`});
         const startTS = new Date();
-        await setGhCheckStatus(gh, GH_ACTION_NAME, gi, "in_progress", undefined, startTS );
+        await setGhCheckStatus({gh: gh, name: GH_ACTION_NAME, gi: gi, status: "in_progress", conclusion: undefined, startTS: startTS} );
 
         const collectStdOut = new StringCapturingProgressLog();
         const allLogs = new WriteToAllProgressLog(
@@ -120,15 +120,23 @@ export const buildWebsiteOld = goal(
         const didError = res.error || (res.status !== 0);
 
         // const gh = githubApi((action.credentials as TokenCredentials).token)
-        await setGhCheckStatus(gh, GH_ACTION_NAME, gi, "completed", didError ? "failure" : "success", startTS, endTS,
-        didError ? {
-            title: `Jekyll Build Failed`,
-            summary: res.error?.name || "No error name found",
-            text: res.error?.message || "No error msg found",
-        } : {
-            title: `Jekyll Build Succeeded`,
-            summary: collectStdOut.log.split("\n").reverse()[0],
-            text: collectStdOut.log,
+        await setGhCheckStatus({
+            gh: gh,
+            name: GH_ACTION_NAME,
+            gi: gi,
+            status: "completed",
+            conclusion: didError ? "failure" : "success",
+            startTS: startTS,
+            endTS: endTS,
+            output: didError ? {
+                title: `Jekyll Build Failed`,
+                summary: res.error?.name || "No error name found",
+                text: res.error?.message || "No error msg found",
+            } : {
+                title: `Jekyll Build Succeeded`,
+                summary: collectStdOut.log.split("\n").reverse()[0],
+                text: collectStdOut.log,
+            }
         });
 
         const logFileName = `jekyll-build-${Date.now()}-${gi.goalEvent.sha.slice(0, 8)}`;
@@ -174,8 +182,8 @@ const buildWebsiteBuilder = spawnBuilder({
     },
 });
 
-export const buildWebsite = new Build({ displayName: "jekyll" }).with({
-    name: "jekyll",
+export const buildWebsite = new Build({ displayName: "Jekyll Build", uniqueName: "jekyll-build" }).with({
+    name: "Jekyll",
     builder: buildWebsiteBuilder,
 });
 

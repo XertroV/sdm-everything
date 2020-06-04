@@ -1,4 +1,4 @@
-import {TokenCredentials} from "@atomist/automation-client";
+import {logger, TokenCredentials} from "@atomist/automation-client";
 import {
     GoalExecutionListener,
     GoalExecutionListenerInvocation,
@@ -16,12 +16,30 @@ export const mkGithubCheckOutput = (title: string, summary: string, text: string
 };
 
 type CheckStatsPs = Octokit.ChecksCreateParams & Octokit.RequestOptions;
+
+interface GhCheckStatusOpts {
+    gh: Octokit;
+    name: string;
+    gi: GoalExecutionListenerInvocation;
+    status: CheckStatsPs["status"];
+    conclusion: CheckStatsPs["conclusion"];
+    startTS: Date;
+    endTS?: Date;
+    output?: CheckStatsPs["output"];
+}
+
 export const setGhCheckStatus =
-    async (gh: Octokit, name: string, gi: GoalExecutionListenerInvocation, status: CheckStatsPs["status"],
-           conclusion: CheckStatsPs["conclusion"], startTS: Date, endTS?: Date, output?: CheckStatsPs["output"]) => {
+    async ({gh, name, gi, status, conclusion, startTS, endTS, output}: GhCheckStatusOpts) => {
     if (isInLocalMode()) {
+        logger.warn(`(Local mode) Skipping GitHub check: ${name}. New status: ${status}. Conclusion: ${conclusion}`);
         return undefined;
     }
+
+    // if we include conclusion:undefined in the params object we'll get a validation error.
+    const extraParamsAtEnd = status === "completed" ? {
+        completed_at: endTS?.toISOString(),
+        conclusion,
+    } : {};
 
     return gh.checks.create({
         head_sha: gi.goalEvent.sha,
@@ -32,9 +50,8 @@ export const setGhCheckStatus =
         external_id: gi.context.correlationId,
         status,
         started_at: startTS.toISOString(),
-        conclusion,
-        completed_at: endTS?.toISOString(),
         output,
+        ...extraParamsAtEnd,
     });
 };
 
@@ -56,6 +73,7 @@ export const GithubChecksListener: GoalExecutionListener = async (geli: GoalExec
     if (geli.goalEvent.state === SdmGoalState.in_process) {
         out = {
             status: "in_progress",
+            conclusion: "neutral",
         };
     } else {
         const conclusion = geli.result?.code !== 0 ? "failure" : "success";
@@ -68,7 +86,16 @@ export const GithubChecksListener: GoalExecutionListener = async (geli: GoalExec
     }
 
     const endTS = new Date();
-    await setGhCheckStatus(gh, geli.goal.name, geli, out.status, out.conclusion, startTS, endTS, out.output);
+    await setGhCheckStatus({
+        gh,
+        name: geli.goal.name,
+        gi: geli,
+        status: out.status,
+        conclusion: out.conclusion || undefined,
+        startTS,
+        endTS,
+        output: out.output,
+    });
 
     return { code: 0 };
 };
