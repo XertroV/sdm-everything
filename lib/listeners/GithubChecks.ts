@@ -77,11 +77,12 @@ export const GithubChecksListener: GoalExecutionListener = async (geli: GoalExec
         };
     } else {
         const conclusion = geli.result?.code !== 0 ? "failure" : "success";
+        const errorObjMessage = !!geli.error ? `Error: ${geli.error?.name}: ${geli.error?.message}` : undefined;
         out = {
             status: "completed",
             conclusion,
             output: mkGithubCheckOutput(`${geli.goal.name}`, `Completed ${geli.goal.name}: ${conclusion}`,
-                geli.goalEvent.error || `Error: ${geli.error?.name}: ${geli.error?.message}` || geli.result?.message || "Not provided: event.error or result.message"),
+                geli.goalEvent.error || errorObjMessage || geli.result?.message || "Not provided: event.error or result.message"),
         };
     }
 

@@ -188,8 +188,8 @@ export const buildWebsite = new Build({ displayName: "Jekyll Build", uniqueName:
 });
 
 export const publishSitePreview = new PublishToS3({
-    displayName: "publish website preview",
-    uniqueName: "publish-website-preview",
+    displayName: "Publish to S3",
+    uniqueName: "publish-preview-to-s3",
     bucketName: "preview.flx.dev",
     region: "ap-southeast-2", // use your region
     filesToPublish: ["_site/**/*"],
@@ -198,7 +198,7 @@ export const publishSitePreview = new PublishToS3({
 });
 
 export const makeCloudFrontDistribution = goal(
-    { displayName: "Deploy Website Preview", uniqueName: "deploy-website-preview" },
+    { displayName: "Deploy Preview (S3/CloudFront)", uniqueName: "deploy-preview-cloudfront" },
     doWithProject(async (pa: ProjectAwareGoalInvocation) => {
         const shaFrag = pa.goalEvent.sha.slice(0, 7);
 
