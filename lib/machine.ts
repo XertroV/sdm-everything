@@ -24,6 +24,7 @@ import {get} from "lodash";
 
 // import * as AWS from "aws-sdk";
 import {cfCreateDistribution} from "./aws/cloudfront";
+import {setGhCheckStatus} from "./listeners/GithubChecks";
 import {asSpawnCommand} from "./util/spawn";
 
 const mkAppInfo = async (p: Project) => {
@@ -86,47 +87,26 @@ const shimLog = (log: WritableLog) => ({
     },
 });
 
-type CheckStatsPs = Octokit.ChecksCreateParams & Octokit.RequestOptions;
-const setGhCheckStatus = async (gh: Octokit, name: string, action: ProjectAwareGoalInvocation, status: CheckStatsPs["status"],
-                                conclusion: CheckStatsPs["conclusion"], startTS: Date, endTS?: Date, output?: CheckStatsPs["output"]) => {
-    if (!isInLocalMode()) {
-        return gh.checks.create({
-            head_sha: action.goalEvent.sha,
-            name,
-            repo: action.goalEvent.repo.name,
-            owner: action.goalEvent.repo.owner,
-            details_url: action.progressLog.url,
-            external_id: action.context.correlationId,
-            status,
-            started_at: startTS.toISOString(),
-            conclusion,
-            completed_at: endTS?.toISOString(),
-            output,
-        });
-    }
-    return null;
-};
-
 export const buildWebsiteOld = goal(
     { displayName: "Build the Flux Website" },
-    doWithProject(async (action: ProjectAwareGoalInvocation) => {
+    doWithProject(async (gi: ProjectAwareGoalInvocation) => {
         const GH_ACTION_NAME = "jekyll-build";
 
-        const ghToken = (action.credentials as TokenCredentials).token;
+        const ghToken = (gi.credentials as TokenCredentials).token;
         const gh = new Octokit({auth: `token ${ghToken}`});
         const startTS = new Date();
-        await setGhCheckStatus(gh, GH_ACTION_NAME, action, "in_progress", undefined, startTS );
+        await setGhCheckStatus(gh, GH_ACTION_NAME, gi, "in_progress", undefined, startTS );
 
         const collectStdOut = new StringCapturingProgressLog();
         const allLogs = new WriteToAllProgressLog(
             "flux-website-build",
             new LoggingProgressLog("flux-website-build-logger", "info"),
-            action.progressLog,
-            addressChannelsProgressLog("flux-website-build-chat", {channels: []}, action.context),
+            gi.progressLog,
+            addressChannelsProgressLog("flux-website-build-chat", {channels: []}, gi.context),
             collectStdOut,
         );
 
-        const commonSpawnOpts = {cwd: action.project.baseDir, log: allLogs};
+        const commonSpawnOpts = {cwd: gi.project.baseDir, log: allLogs};
         const dockerBuildArgs = [" build", "-f", "./_docker-dev/Dockerfile", "-t", "flux-website-docker-dev:latest", "."];
         const dockerBuildRes = await spawnPromise("docker", dockerBuildArgs, commonSpawnOpts);
         const rNpmI = await spawnPromise("./dev-docker.sh", ["build"], commonSpawnOpts);
@@ -140,7 +120,7 @@ export const buildWebsiteOld = goal(
         const didError = res.error || (res.status !== 0);
 
         // const gh = githubApi((action.credentials as TokenCredentials).token)
-        await setGhCheckStatus(gh, GH_ACTION_NAME, action, "completed", didError ? "failure" : "success", startTS, endTS,
+        await setGhCheckStatus(gh, GH_ACTION_NAME, gi, "completed", didError ? "failure" : "success", startTS, endTS,
         didError ? {
             title: `Jekyll Build Failed`,
             summary: res.error?.name || "No error name found",
@@ -151,14 +131,14 @@ export const buildWebsiteOld = goal(
             text: collectStdOut.log,
         });
 
-        const logFileName = `jekyll-build-${Date.now()}-${action.goalEvent.sha.slice(0, 8)}`;
+        const logFileName = `jekyll-build-${Date.now()}-${gi.goalEvent.sha.slice(0, 8)}`;
 
         if (didError) {
             // magic string we print in `npm run build`
             const [preJekyllErr, jekyllErr] = collectStdOut.log.split("--JEKYLL-BUILD--");
             const errToSend = jekyllErr || preJekyllErr;
 
-            await action.addressChannels({
+            await gi.addressChannels({
                 title: `Jekyll build failed; status: ${res.status}`,
                 content: `JEKYLL BUILD ERROR:\n\n${errToSend}`,
                 fileName: logFileName,
@@ -268,7 +248,9 @@ export const makeCloudFrontDistribution = goal(
         // aws configure set preview.cloudfront true && aws cloudfront create-invalidation --distribution-id <dist-id> --paths /index.html
         */
 
-        const distribUrl = get(distrib.Distribution?.DistributionConfig.Aliases?.Items, 0, distrib.Distribution?.DomainName);
+        // do this for the moment (always use cloudfront domain) to avoid needing to do R53 stuff
+        const distribUrl = distrib.Distribution?.DomainName ||
+            get(distrib.Distribution?.DistributionConfig.Aliases?.Items, 0, distrib.Distribution?.DomainName);
         return { code: 0, externalUrls: [ {label: `Deploy Preview for ${shaFrag}`, url: `https://${distribUrl}`} ] };
     }),
 );

@@ -29,13 +29,13 @@
     "@atomist/sdm-pack-build": "^1.0.6",
     "@atomist/sdm-pack-s3": "^0.5.0",
     "@atomist/slack-messages": "^1.1.1",
-    "aws-sdk": "^2.688.0",
+    "aws-sdk": "^2.689.0",
     "lodash": "^4.17.15",
     "winston": "^3.2.1"
   },
   "devDependencies": {
     "@atomist/sdm-local": "1.2.2-master.20191011215150",
-    "@octokit/types": "^4.1.5",
+    "@octokit/types": "^4.1.6",
     "@types/mocha": "^5.2.7",
     "@types/power-assert": "^1.5.0",
     "espower-typescript": "^9.0.2",

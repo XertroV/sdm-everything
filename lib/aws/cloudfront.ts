@@ -48,6 +48,7 @@ export const cfCreateDistribution = async (shaFrag: string, opts?: {originId?: s
                 ViewerProtocolPolicy: "redirect-to-https",
                 MinTTL: 600,
             },
+            DefaultRootObject: "index.html",
             Origins: {
                 Quantity: 1,
                 Items: [
