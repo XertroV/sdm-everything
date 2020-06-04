@@ -3,6 +3,7 @@ import * as assert from "power-assert";
 import {cfCreateDistribution, cfDeleteDistribution} from "../lib/aws/cloudfront";
 
 describe("cloudfront core", () => {
+    // not fully functional; disable for the moment
     it("create CF distribs", async () => {
         // const cf = new AWS.CloudFront();
         const shaFrag = `test-${Date.now().toString().slice(-5)}`;

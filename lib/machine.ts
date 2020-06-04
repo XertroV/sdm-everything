@@ -1,11 +1,45 @@
-import { addressChannelsProgressLog, doWithProject, ExecuteGoalResult, filesChangedSince, goal, GoalInvocation, LoggingProgressLog, ProjectAwareGoalInvocation, PushListenerInvocation, pushTest, spawnPromise, StringCapturingProgressLog, WritableLog, WriteToAllProgressLog } from "@atomist/sdm";
+import {
+    addressChannelsProgressLog,
+    doWithProject,
+    filesChangedSince,
+    goal,
+    GoalInvocation, lastLinesLogInterpreter,
+    LoggingProgressLog, ProjectAwareGoalInvocation,
+    PushListenerInvocation,
+    pushTest, spawnPromise,
+    StringCapturingProgressLog,
+    WritableLog,
+    WriteToAllProgressLog,
+} from "@atomist/sdm";
 import { isInLocalMode } from "@atomist/sdm-core";
+import {Build, spawnBuilder} from "@atomist/sdm-pack-build";
 
-import { TokenCredentials } from "@atomist/automation-client";
+import {GitProject, logger, Project, RemoteRepoRef, TokenCredentials} from "@atomist/automation-client";
+import {AppInfo} from "@atomist/sdm/lib/spi/deploy/Deployment";
 import {Octokit} from "@octokit/rest";
+
+import {PublishToS3} from "@atomist/sdm-pack-s3";
+
+import {get} from "lodash";
 
 // import * as AWS from "aws-sdk";
 import {cfCreateDistribution} from "./aws/cloudfront";
+import {asSpawnCommand} from "./util/spawn";
+
+const mkAppInfo = async (p: Project) => {
+    return {
+        name: p.id.repo,
+        version: p.id.sha || "0.0.0",
+        id: p.id as RemoteRepoRef,
+    };
+};
+
+export const mkBashCommand = (cmd: string) => {
+    return {
+        command: "bash",
+        args: ["-c", cmd],
+    };
+};
 
 export const msgGoal = goal(
     {
@@ -73,7 +107,7 @@ const setGhCheckStatus = async (gh: Octokit, name: string, action: ProjectAwareG
     return null;
 };
 
-export const buildWebsite = goal(
+export const buildWebsiteOld = goal(
     { displayName: "Build the Flux Website" },
     doWithProject(async (action: ProjectAwareGoalInvocation) => {
         const GH_ACTION_NAME = "jekyll-build";
@@ -131,27 +165,64 @@ export const buildWebsite = goal(
                 fileType: `text`,
             });
         } else {
-            await action.addressChannels({
-                title: `Jekyll build succeeded!`,
-                content: collectStdOut.log.split("\n").reverse().slice(0, 30).reverse().join("\n"),
-                fileName: logFileName,
-                fileType: `text`,
-            });
+            // await action.addressChannels({
+            //     // title: `Jekyll build succeeded!`,
+            //     // content: collectStdOut.log.split("\n").reverse().slice(0, 30).reverse().join("\n"),
+            //     // fileName: logFileName,
+            //     // fileType: `text`,
+            // });
         }
 
-        return { code: res.status !== 0 ? (res.status || -1) : res.status } as ExecuteGoalResult; // { code: res.code }
+        return { code: res.status !== 0 ? (res.status || -1) : res.status }; // as ExecuteGoalResult; // { code: res.code }
     }),
 );
 
 // @ts-ignore
-const deployWebsitePreview = goal(
+const toSpawnCommand = (c, i, a) => typeof c === "string" ? asSpawnCommand(c) : c;
+
+const buildWebsiteBuilder = spawnBuilder({
+    name: "jekyll builder",
+    logInterpreter: lastLinesLogInterpreter("Tail of the log:", 10),
+    projectToAppInfo: mkAppInfo,
+    commands: [
+        // "mkdir -p _site",
+        // mkBashCommand("echo testing > _site/index.html"),
+        "./dev-docker.sh build",
+    ].map(toSpawnCommand),
+    async deploymentUnitFor(p: GitProject, appId: AppInfo): Promise<string> {
+        return "_site";
+    },
+});
+
+export const buildWebsite = new Build({ displayName: "jekyll" }).with({
+    name: "jekyll",
+    builder: buildWebsiteBuilder,
+});
+
+export const publishSitePreview = new PublishToS3({
+    displayName: "publish website preview",
+    uniqueName: "publish-website-preview",
+    bucketName: "preview.flx.dev",
+    region: "ap-southeast-2", // use your region
+    filesToPublish: ["_site/**/*"],
+    pathTranslation: (filepath, gi) => filepath.replace(/^_site/, `${gi.goalEvent.sha.slice(0, 7)}`),
+    pathToIndex: "_site/", // index file in your project
+});
+
+export const makeCloudFrontDistribution = goal(
     { displayName: "Deploy Website Preview", uniqueName: "deploy-website-preview" },
     doWithProject(async (pa: ProjectAwareGoalInvocation) => {
         const shaFrag = pa.goalEvent.sha.slice(0, 7);
 
-        const distrib = await cfCreateDistribution(shaFrag);
-        console.log(distrib);
+        if (isInLocalMode()) {
+            logger.warn(`Not creating cloudfront distribution as we're in local mode.`);
+            return { code: 0 };
+        }
 
+        const distrib = await cfCreateDistribution(shaFrag);
+        // console.log(distrib);
+
+        /*
         // const cf = new AWS.CloudFront();
         // const originId = `S3-preview-website-origin-${shaFrag}`;
         // // const origin = await cf.createCloudFrontOriginAccessIdentity({
@@ -195,6 +266,10 @@ const deployWebsitePreview = goal(
         // );
         // aws s3 sync _site/ s3://preview.flx.dev/test/ --acl public-read --expires $(expr $(date +%s) + $(expr 7 \* 86400))
         // aws configure set preview.cloudfront true && aws cloudfront create-invalidation --distribution-id <dist-id> --paths /index.html
+        */
+
+        const distribUrl = get(distrib.Distribution?.DistributionConfig.Aliases?.Items, 0, distrib.Distribution?.DomainName);
+        return { code: 0, externalUrls: [ {label: `Deploy Preview for ${shaFrag}`, url: `https://${distribUrl}`} ] };
     }),
 );
 

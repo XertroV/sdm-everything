@@ -13,23 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import * as path from 'path';
-import * as os from 'os';
+import * as os from "os";
+import * as path from "path";
 
- import { configure, CompressingGoalCache } from "@atomist/sdm-core";
-import { HelloWorldGoals } from "./lib/goals/goals";
-import {isFluxSiteRepo, msgGoal, shouldRebuildSite, buildWebsite} from "./lib/machine";
+import { CompressingGoalCache, configure } from "@atomist/sdm-core";
+// import { HelloWorldGoals } from "./lib/goals/goals";
+import {buildWebsite, isFluxSiteRepo, makeCloudFrontDistribution, msgGoal, publishSitePreview, shouldRebuildSite} from "./lib/machine";
+
+process.env.AWS_SDK_LOAD_CONFIG = "1";
 
 /**
  * The main entry point into the SDM
  */
-export const configuration = configure<HelloWorldGoals>(async sdm => {
+export const configuration = configure(async sdm => {
 
     sdm.configuration.sdm.cache = {
         enabled: true,
         path: path.join(os.homedir(), ".atomist", "cache"),
-        store: new CompressingGoalCache()
-    }
+        store: new CompressingGoalCache(),
+    };
 
     // Use the sdm instance to configure commands etc
     sdm.addCommand({
@@ -58,11 +60,13 @@ export const configuration = configure<HelloWorldGoals>(async sdm => {
         websiteBuild: {
             test: [
                 isFluxSiteRepo,
-                shouldRebuildSite
+                shouldRebuildSite,
             ],
             goals: [
                 msgGoal,
                 buildWebsite,
+                publishSitePreview,
+                makeCloudFrontDistribution,
             ],
         },
     };

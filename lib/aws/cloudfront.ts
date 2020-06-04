@@ -7,7 +7,7 @@ const logger = namedLogger("cloudfront");
 // replay protection
 const mkCallerRef = () => `${Date.now()}`;
 
-export const cfCreateDistribution = async (shaFrag: string, opts?: {originId?: string, Enabled: boolean}): Promise<AWS.CloudFront.CreateDistributionResult> => {
+export const cfCreateDistribution = async (shaFrag: string, opts?: {originId?: string, Enabled?: boolean}): Promise<AWS.CloudFront.CreateDistributionResult> => {
     const originId = opts?.originId || `S3-preview-website-origin-${shaFrag}`;
     const cf = new AWS.CloudFront();
 
@@ -18,8 +18,21 @@ export const cfCreateDistribution = async (shaFrag: string, opts?: {originId?: s
     logger.debug(`Creating CloudFront distrib with opts`, shaFrag, originId);
     logger.debug(`Creating CloudFront distrib with opts: ${shaFrag}, ${originId}`);
 
+    const certArn = get(opts, "CertificateARN", "arn:aws:acm:us-east-1:076866892044:certificate/049db79c-199d-4afd-91d7-1b391a63922e");
+    const viewerCert = !certArn ? undefined : {
+        ACMCertificateArn: certArn,
+        SSLSupportMethod: "sni-only",
+        MinimumProtocolVersion: "TLSv1.2_2018",
+    };
+
+
+
     const distrib = await cf.createDistribution({
         DistributionConfig: {
+            Aliases: {
+                Quantity: 1,
+                Items: [`${shaFrag}.preview.flx.dev`],
+            },
             CallerReference: mkCallerRef(),
             Comment: `S3-flux-website-preview-${shaFrag}`,
             DefaultCacheBehavior: {
@@ -49,7 +62,12 @@ export const cfCreateDistribution = async (shaFrag: string, opts?: {originId?: s
                 ],
             },
             Enabled: get(opts, "Enabled", true),
-            // ViewerProtocolPolicy: "redirect-to-https"
+            ViewerCertificate: viewerCert,
+            /*{
+                ACMCertificateArn: certArn,
+                SSLSupportMethod: "sni-only",
+                MinimumProtocolVersion: "TLSv1.2_2018",
+            },*/
         },
     }, // as AWS.CloudFront.CreateDistributionRequest
     // , (err, val) => {});
