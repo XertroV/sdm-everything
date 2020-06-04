@@ -17,7 +17,7 @@ import * as os from "os";
 import * as path from "path";
 
 import { CompressingGoalCache, configure } from "@atomist/sdm-core";
-import {GithubChecks} from "./lib/listeners/GithubChecks";
+import {GithubChecksListener} from "./lib/listeners/GithubChecks";
 // import { HelloWorldGoals } from "./lib/goals/goals";
 import {buildWebsite, isFluxSiteRepo, makeCloudFrontDistribution, msgGoal, publishSitePreview, shouldRebuildSite} from "./lib/machine";
 
@@ -51,7 +51,6 @@ export const configuration = configure(async sdm => {
     // sdm.addGoalExecutionListener(checkGoalExecutionListener);
     // sdm.addExtensionPacks(githubGoalChecksSupport());
 
-
     // Return all push rules
     return {
         // hello: {
@@ -69,9 +68,9 @@ export const configuration = configure(async sdm => {
             ],
             goals: [
                 msgGoal,
-                buildWebsite.withExecutionListener(GithubChecks),
-                publishSitePreview.withExecutionListener(GithubChecks),
-                makeCloudFrontDistribution.withExecutionListener(GithubChecks),
+                buildWebsite.withExecutionListener(GithubChecksListener),
+                publishSitePreview.withExecutionListener(GithubChecksListener),
+                makeCloudFrontDistribution.withExecutionListener(GithubChecksListener),
             ],
         },
     };
