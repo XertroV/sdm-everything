@@ -17,12 +17,9 @@
 // import {spawnBuilder} from "@atomist/sdm-pack-build";
 
 import {RemoteRepoRef} from "@atomist/automation-client/lib/operations/common/RepoId";
-import {GitProject} from "@atomist/automation-client/lib/project/git/GitProject";
 import {Project} from "@atomist/automation-client/lib/project/Project";
-import {spawnPromise} from "@atomist/automation-client/lib/util/child_process";
+import {spawnPromise, WritableLog} from "@atomist/automation-client/lib/util/child_process";
 import {logger} from "@atomist/automation-client/lib/util/logger";
-import {spawnBuilder} from "@atomist/sdm-pack-build";
-import {PublishToS3} from "@atomist/sdm-pack-s3/lib";
 import {addressChannelsProgressLog} from "@atomist/sdm/lib/api-helper/log/addressChannelsProgressLog";
 import {LoggingProgressLog} from "@atomist/sdm/lib/api-helper/log/LoggingProgressLog";
 import {lastLinesLogInterpreter} from "@atomist/sdm/lib/api-helper/log/logInterpreters";
@@ -34,10 +31,12 @@ import {GoalInvocation} from "@atomist/sdm/lib/api/goal/GoalInvocation";
 import {goal} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
 import {PushListenerInvocation} from "@atomist/sdm/lib/api/listener/PushListener";
 import {pushTest} from "@atomist/sdm/lib/api/mapping/PushTest";
-import {isInLocalMode} from "@atomist/sdm/lib/core/machine/modes";
 import {cfCreateDistribution} from "./aws/cloudfront";
 import {setGhCheckStatus} from "./listeners/GithubChecks";
 import {asSpawnCommand, SpawnCommand} from "./util/spawn";
+import {isInLocalMode} from "@atomist/sdm-core/lib/internal/machine/modes";
+import {spawnBuilder} from "@atomist/sdm-pack-build";
+import {PublishToS3} from "@atomist/sdm-pack-s3";
 
 const mkAppInfo = async (p: Project) => {
     return {
@@ -200,10 +199,7 @@ export const buildWebsiteBuilder = spawnBuilder({
                 "docker run --rm --mount type=volume,src=flux-site-vol-node,dst=/src/node_modules --mount type=volume,src=flux-site-vol-bundle-gems,dst=/src/.bundle-gems --mount type=volume,src=flux-site-vol-bundle,dst=/src/.bundle --mount type=bind,src=$PWD,dst=/src --env NODE_ENV=production flux-website-docker-dev:latest bash  -c \"npm run --silent build || (npm ci && npm run build)\"",
             ],
         },
-    ].map(toSpawnCommand),
-    async deploymentUnitFor(p: GitProject, appId): Promise<string> {
-        return "_site";
-    },
+    ].map(toSpawnCommand)
 });
 
 export const publishSitePreview = new PublishToS3({

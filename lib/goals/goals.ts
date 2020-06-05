@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-import {GoalWithFulfillment} from "@atomist/sdm";
 import {DeliveryGoals} from "@atomist/sdm-core/lib/machine/configure";
 import {Build} from "@atomist/sdm-pack-build";
+import {GoalWithFulfillment} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
 
 type DeliveryGoal = GoalWithFulfillment;
 // type DeliveryGoalExtra = DeliveryGoal | DeliveryGoal[] | DeliveryGoal[][];

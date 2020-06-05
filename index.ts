@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import {logger} from "@atomist/automation-client";
 import {CompressingGoalCache} from "@atomist/sdm-core/lib/goal/cache/CompressingGoalCache";
 import {isInLocalMode} from "@atomist/sdm-core/lib/internal/machine/modes";
 import {configure} from "@atomist/sdm-core/lib/machine/configure";
@@ -25,6 +24,7 @@ import {FluxGoalConfigurer} from "./lib/goals/goalConfigurer";
 import {FluxGoalCreator} from "./lib/goals/goalCreator";
 import {FluxGoals} from "./lib/goals/goals";
 import {isFluxSiteRepo, shouldRebuildSite} from "./lib/machine";
+import {logger} from "@atomist/automation-client/lib/util/logger";
 // import { githubLifecycleSupport } from "@atomist/sdm-pack-lifecycle-github";
 
 /**

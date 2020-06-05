@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-import {logger} from "@atomist/automation-client";
-import {goal} from "@atomist/sdm";
 import {GoalCreator} from "@atomist/sdm-core/lib/machine/configure";
 import {Build} from "@atomist/sdm-pack-build";
 import {GitHubChecksListener} from "../listeners/GithubChecks";
 import {buildWebsiteBuilder, makeCloudFrontDistribution, publishSitePreview, thankAuthorInChannelGoal} from "../machine";
 import {snooze} from "../util";
 import { FluxGoals } from "./goals";
+import {goal} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
+import {logger} from "@atomist/automation-client/lib/util/logger";
 
 const buildWebsite = new Build({ displayName: "Jekyll Build", uniqueName: "jekyll-build" }).with({
     name: "Jekyll",
