@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 import {logger} from "@atomist/automation-client";
+import {CompressingGoalCache} from "@atomist/sdm-core/lib/goal/cache/CompressingGoalCache";
+import {isInLocalMode} from "@atomist/sdm-core/lib/internal/machine/modes";
+import {configure} from "@atomist/sdm-core/lib/machine/configure";
+
 import * as os from "os";
 import * as path from "path";
 
-import {CompressingGoalCache, configure, isInLocalMode} from "@atomist/sdm-core";
 import {FluxGoalConfigurer} from "./lib/goals/goalConfigurer";
 import {FluxGoalCreator} from "./lib/goals/goalCreator";
 import {FluxGoals} from "./lib/goals/goals";

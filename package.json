@@ -22,11 +22,14 @@
   ],
   "main": "./index.js",
   "types": "./index.d.ts",
+  "peerDependencies": {
+    "@types/puppeteer": "^3.0.0"
+  },
   "dependencies": {
-    "@atomist/automation-client": "1.8.0-master.20191107225525",
-    "@atomist/sdm": "1.8.0-dynamic-goals.20191108140247",
-    "@atomist/sdm-core": "1.8.0-dynamic-goals.20191108152504",
-    "@atomist/sdm-pack-build": "^1.0.6",
+    "@atomist/automation-client": "2.0.0-master.20200205130055",
+    "@atomist/sdm": "2.0.0-master.20200204153359",
+    "@atomist/sdm-core": "2.0.0-master.20200205194750",
+    "@atomist/sdm-pack-build": "1.0.7-master.20191011105702",
     "@atomist/sdm-pack-s3": "^0.5.1-master.20200319141020",
     "@atomist/slack-messages": "^1.1.1",
     "@graphql-codegen/core": "1.7.0",
@@ -34,29 +37,30 @@
     "@graphql-codegen/typescript": "1.7.0",
     "@graphql-codegen/typescript-compatibility": "1.7.0",
     "@graphql-codegen/typescript-operations": "1.7.0",
-    "@types/puppeteer": "^3.0.0",
     "aws-sdk": "^2.689.0",
     "bufferutil": "^4.0.1",
     "discord.js": "^12.2.0",
     "lodash": "^4.17.15",
-    "puppeteer": "^3.3.0",
+    "puppeteer": "3.3.0",
     "winston": "^3.2.1"
   },
   "devDependencies": {
-    "@atomist/sdm-local": "1.2.2-master.20191011215150",
-    "@octokit/types": "^4.1.6",
+    "@types/lodash": "^4.14.144",
     "@types/mocha": "^5.2.7",
     "@types/power-assert": "^1.5.0",
     "espower-typescript": "^9.0.2",
-    "mocha": "^6.2.2",
+    "mocha": "^6.2.1",
     "npm-run-all": "^4.1.5",
     "power-assert": "^1.6.1",
     "rimraf": "^3.0.0",
     "supervisor": "^0.12.0",
-    "ts-node": "^8.4.1",
-    "tslint": "^5.20.1",
-    "typedoc": "^0.15.0",
-    "typescript": "^3.7.2"
+    "ts-node": "^8.6.2",
+    "tslint": "^6.0.0",
+    "typedoc": "^0.16.8",
+    "typescript": "^3.7.5",
+    "@octokit/types": "^4.1.6",
+    "@types/node": "^14.0.11",
+    "nodemon": "^2.0.4"
   },
   "directories": {
     "test": "test"

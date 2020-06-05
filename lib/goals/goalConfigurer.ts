@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { GoalConfigurer } from "@atomist/sdm-core";
+import {GoalConfigurer} from "@atomist/sdm-core/lib/machine/configure";
 import {GitHubChecksListener} from "../listeners/GithubChecks";
 // import {GitHubChecksListener} from "../listeners/GithubChecks";
 import { FluxGoals } from "./goals";

@@ -15,7 +15,7 @@
  */
 
 import {GoalWithFulfillment} from "@atomist/sdm";
-import { DeliveryGoals } from "@atomist/sdm-core";
+import {DeliveryGoals} from "@atomist/sdm-core/lib/machine/configure";
 import {Build} from "@atomist/sdm-pack-build";
 
 type DeliveryGoal = GoalWithFulfillment;

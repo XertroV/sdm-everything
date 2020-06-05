@@ -1,4 +1,4 @@
-import {logger, TokenCredentials} from "@atomist/automation-client";
+/*
 import {
     GoalExecutionListener,
     GoalExecutionListenerInvocation,
@@ -10,7 +10,15 @@ import {
 import {isInLocalMode} from "@atomist/sdm-core";
 import {SdmGoalState} from "@atomist/sdm/lib/typings/types";
 import {Octokit} from "@octokit/rest";
+*/
+import {TokenCredentials} from "@atomist/automation-client/lib/operations/common/ProjectOperationCredentials";
+import {logger} from "@atomist/automation-client/lib/util/logger";
+import {isInLocalMode} from "@atomist/sdm-core/lib/internal/machine/modes";
+import {SdmGoalState} from "@atomist/sdm-core/lib/typings/types";
+import {GoalExecutionListener, GoalExecutionListenerInvocation} from "@atomist/sdm/lib/api/listener/GoalStatusListener";
 import {get} from "lodash";
+
+import {Octokit} from "@octokit/rest";
 
 export const mkGithubCheckOutput = (title: string, summary: string, text?: string) => {
     return { title, summary, text };
@@ -30,32 +38,32 @@ interface GhCheckStatusOpts {
 
 export const setGhCheckStatus =
     async ({name, gi, status, conclusion, startTS, endTS, output}: GhCheckStatusOpts) => {
-    const ghToken = (gi.credentials as TokenCredentials).token;
-    const gh = new Octokit({auth: `token ${ghToken}`});
+        const ghToken = (gi.credentials as TokenCredentials).token;
+        const gh = new Octokit({auth: `token ${ghToken}`});
 
-    if (isInLocalMode()) {
-        logger.warn(`(Local mode) Skipping GitHub check: ${name}. New status: ${status}. Conclusion: ${conclusion}`);
-        return undefined;
-    }
+        if (isInLocalMode()) {
+            logger.warn(`(Local mode) Skipping GitHub check: ${name}. New status: ${status}. Conclusion: ${conclusion}`);
+            return undefined;
+        }
 
-    // if we include conclusion:undefined in the params object we'll get a validation error.
-    const extraParamsAtEnd = status === "completed" ? {
-        completed_at: endTS?.toISOString(),
-        conclusion,
-        // ...(!!output ? {output} : {}),  // ahh, hacks. because ofc 'a' is in {a: undefined} but not in {}, even tho obj.a === undefined for both.
-    } : {};
+        // if we include conclusion:undefined in the params object we'll get a validation error.
+        const extraParamsAtEnd = status === "completed" ? {
+            completed_at: endTS?.toISOString(),
+            conclusion,
+            // ...(!!output ? {output} : {}),  // ahh, hacks. because ofc 'a' is in {a: undefined} but not in {}, even tho obj.a === undefined for both.
+        } : {};
 
-    return gh.checks.create({
-        head_sha: gi.goalEvent.sha,
-        name,
-        repo: gi.goalEvent.repo.name,
-        owner: gi.goalEvent.repo.owner,
-        details_url: get(gi.goalEvent.externalUrls, 0, gi.goalEvent).url,
-        external_id: gi.context.correlationId,
-        status,
-        started_at: startTS.toISOString(),
-        ...extraParamsAtEnd,
-    });
+        return gh.checks.create({
+            head_sha: gi.goalEvent.sha,
+            name,
+            repo: gi.goalEvent.repo.name,
+            owner: gi.goalEvent.repo.owner,
+            details_url: get(gi.goalEvent.externalUrls, 0, gi.goalEvent).url,
+            external_id: gi.context.correlationId,
+            status,
+            started_at: startTS.toISOString(),
+            ...extraParamsAtEnd,
+        });
 };
 
 export const GitHubChecksListener: GoalExecutionListener = async (geli: GoalExecutionListenerInvocation) => {

@@ -15,8 +15,8 @@
  */
 
 import {logger} from "@atomist/automation-client";
-import { goal } from "@atomist/sdm";
-import { GoalCreator } from "@atomist/sdm-core";
+import {goal} from "@atomist/sdm";
+import {GoalCreator} from "@atomist/sdm-core/lib/machine/configure";
 import {Build} from "@atomist/sdm-pack-build";
 import {GitHubChecksListener} from "../listeners/GithubChecks";
 import {buildWebsiteBuilder, makeCloudFrontDistribution, publishSitePreview, thankAuthorInChannelGoal} from "../machine";

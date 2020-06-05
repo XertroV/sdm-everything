@@ -1,27 +1,40 @@
-import {
-    addressChannelsProgressLog,
-    doWithProject,
-    filesChangedSince,
-    goal,
-    GoalInvocation, lastLinesLogInterpreter,
-    LoggingProgressLog, ProjectAwareGoalInvocation,
-    PushListenerInvocation,
-    pushTest, spawnPromise,
-    StringCapturingProgressLog,
-    WritableLog,
-    WriteToAllProgressLog,
-} from "@atomist/sdm";
-import { isInLocalMode } from "@atomist/sdm-core";
-import {BuildingContainer} from "@atomist/sdm-core/lib/goal/container/buildingContainer";
+// import {
+//     addressChannelsProgressLog,
+//     doWithProject,
+//     filesChangedSince,
+//     goal,
+//     GoalInvocation, lastLinesLogInterpreter,
+//     LoggingProgressLog, ProjectAwareGoalInvocation,
+//     PushListenerInvocation,
+//     pushTest, spawnPromise,
+//     StringCapturingProgressLog,
+//     WritableLog,
+//     WriteToAllProgressLog,
+// } from "@atomist/sdm";
+//
+// import { isInLocalMode } from "@atomist/sdm-core";
+// import {BuildingContainer} from "@atomist/sdm-core/lib/goal/container/buildingContainer";
+// import {spawnBuilder} from "@atomist/sdm-pack-build";
+
+import {RemoteRepoRef} from "@atomist/automation-client/lib/operations/common/RepoId";
+import {GitProject} from "@atomist/automation-client/lib/project/git/GitProject";
+import {Project} from "@atomist/automation-client/lib/project/Project";
+import {spawnPromise} from "@atomist/automation-client/lib/util/child_process";
+import {logger} from "@atomist/automation-client/lib/util/logger";
 import {spawnBuilder} from "@atomist/sdm-pack-build";
-
-import {GitProject, logger, Project, RemoteRepoRef} from "@atomist/automation-client";
-import {AppInfo} from "@atomist/sdm/lib/spi/deploy/Deployment";
-// import {Octokit} from "@octokit/rest";
-
-import {PublishToS3} from "@atomist/sdm-pack-s3";
-
-// import * as AWS from "aws-sdk";
+import {PublishToS3} from "@atomist/sdm-pack-s3/lib";
+import {addressChannelsProgressLog} from "@atomist/sdm/lib/api-helper/log/addressChannelsProgressLog";
+import {LoggingProgressLog} from "@atomist/sdm/lib/api-helper/log/LoggingProgressLog";
+import {lastLinesLogInterpreter} from "@atomist/sdm/lib/api-helper/log/logInterpreters";
+import {StringCapturingProgressLog} from "@atomist/sdm/lib/api-helper/log/StringCapturingProgressLog";
+import {WriteToAllProgressLog} from "@atomist/sdm/lib/api-helper/log/WriteToAllProgressLog";
+import {filesChangedSince} from "@atomist/sdm/lib/api-helper/misc/git/filesChangedSince";
+import {doWithProject, ProjectAwareGoalInvocation} from "@atomist/sdm/lib/api-helper/project/withProject";
+import {GoalInvocation} from "@atomist/sdm/lib/api/goal/GoalInvocation";
+import {goal} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
+import {PushListenerInvocation} from "@atomist/sdm/lib/api/listener/PushListener";
+import {pushTest} from "@atomist/sdm/lib/api/mapping/PushTest";
+import {isInLocalMode} from "@atomist/sdm/lib/core/machine/modes";
 import {cfCreateDistribution} from "./aws/cloudfront";
 import {setGhCheckStatus} from "./listeners/GithubChecks";
 import {asSpawnCommand, SpawnCommand} from "./util/spawn";
@@ -50,7 +63,7 @@ export const thankAuthorInChannelGoal = goal(
         const author = gi.goalEvent.push.commits?.map(el => el?.author?.name)[0];
 
         if (!!screenName) {
-            await gi.context.messageClient.addressUsers(":tada: Thanks for contributing! :relaxed:", screenName);
+            // await gi.context.messageClient.addressUsers(":tada: Thanks for contributing! :relaxed:", screenName);
         }
         await gi.addressChannels(`:tada: Thanks to ${!!screenName ? `@${screenName}` : author} for contributing! ${gi.goalEvent.sha.slice(0, 8)} :rocket:`);
     },
@@ -81,7 +94,7 @@ export const isFluxSiteRepo = pushTest(
 const shimLog = (log: WritableLog) => ({
     stripAnsi: true,
     write: (msg: string) => {
-        logger.info(`shimLog [${Date()}] ${msg}`);
+        logger.info(`shimLog [${Date()}] ${msg}.`);
         log.write(msg);
     },
 });
@@ -163,7 +176,7 @@ export const buildWebsiteOld = goal(
     }),
 );
 
-export const buildFluxSiteUsingImage = new BuildingContainer({
+/* export const buildFluxSiteUsingImage = new BuildingContainer({
     displayName: "Jekyll Build Container",
 }, {
     output: [{pattern: {directory: "_site"}, classifier: "flux-site-jekyll-build-output"}],
@@ -171,7 +184,7 @@ export const buildFluxSiteUsingImage = new BuildingContainer({
         { name: "", image: "", volumeMounts: [], command: [], env: [{name: "SOME_ENV", value: ""}] },
     ],
     name: "Jekyll Build Container (Registration)",
-});
+}); */
 
 // @ts-ignore
 const toSpawnCommand = (c: string | SpawnCommand, i, a): SpawnCommand => typeof c === "string" ? asSpawnCommand(c) : c;
@@ -188,7 +201,7 @@ export const buildWebsiteBuilder = spawnBuilder({
             ],
         },
     ].map(toSpawnCommand),
-    async deploymentUnitFor(p: GitProject, appId: AppInfo): Promise<string> {
+    async deploymentUnitFor(p: GitProject, appId): Promise<string> {
         return "_site";
     },
 });
@@ -199,7 +212,7 @@ export const publishSitePreview = new PublishToS3({
     bucketName: "preview.flx.dev",
     region: "ap-southeast-2", // use your region
     filesToPublish: ["_site/**/*"],
-    pathTranslation: (filepath, gi) => filepath.replace(/^_site/, `${gi.goalEvent.sha.slice(0, 7)}`),
+    pathTranslation: (filepath: string, gi: GoalInvocation) => filepath.replace(/^_site/, `${gi.goalEvent.sha.slice(0, 7)}`),
     pathToIndex: "_site/index.html", // index file in your project
     linkLabel: "S3 Link",
 });
