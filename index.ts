@@ -27,14 +27,15 @@ import {isFluxSiteRepo, shouldRebuildSite} from "./lib/machine";
 import {logger} from "@atomist/automation-client/lib/util/logger";
 // import { githubLifecycleSupport } from "@atomist/sdm-pack-lifecycle-github";
 
+process.env.AWS_SDK_LOAD_CONFIG = "1";
+process.env.AWS_DEFAULT_REGION = "ap-southeast-2";
+process.env.AWS_PROFILE = "Flux";
+
 /**
  * The main entry point into the SDM
  */
 export const configuration = configure<FluxGoals>(async sdm => {
 
-    process.env.AWS_SDK_LOAD_CONFIG = "1";
-    process.env.AWS_DEFAULT_REGION = "ap-southeast-2";
-    process.env.AWS_PROFILE = "Flux";
 
     if (isInLocalMode()) {
         logger.warn(`Config: ${JSON.stringify(sdm.configuration)}`);

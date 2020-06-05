@@ -26,9 +26,9 @@
     "@types/puppeteer": "^3.0.0"
   },
   "dependencies": {
-    "@atomist/automation-client": "2.0.0-master.20191226145834",
-    "@atomist/sdm": "2.0.0-master.20191226140700",
-    "@atomist/sdm-core": "2.0.0-master.20191221184944",
+    "@atomist/automation-client": "2.0.0-master.20191213160252",
+    "@atomist/sdm": "2.0.0-master.20191213214023",
+    "@atomist/sdm-core": "2.0.0-master.20191212171845",
     "@atomist/sdm-pack-build": "file:atomist-sdm-pack-build-1.0.7.tgz",
     "@atomist/sdm-pack-s3": "file:atomist-sdm-pack-s3-0.5.1.tgz",
     "@atomist/slack-messages": "^1.1.1",
@@ -52,7 +52,6 @@
     "@types/mocha": "^5.2.7",
     "@types/power-assert": "^1.5.0",
     "espower-typescript": "^9.0.2",
-    "install": "^0.13.0",
     "mocha": "^6.2.1",
     "nodemon": "^2.0.4",
     "npm": "^6.14.5",
