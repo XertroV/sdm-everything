@@ -26,9 +26,9 @@
     "@types/puppeteer": "^3.0.0"
   },
   "dependencies": {
-    "@atomist/automation-client": "2.0.0-master.20191206152722",
-    "@atomist/sdm": "2.0.0-master.20200204153359",
-    "@atomist/sdm-core": "2.0.0-master.20200205194750",
+    "@atomist/automation-client": "2.0.0-master.20191226145834",
+    "@atomist/sdm": "2.0.0-master.20191226140700",
+    "@atomist/sdm-core": "2.0.0-master.20191221184944",
     "@atomist/sdm-pack-build": "file:atomist-sdm-pack-build-1.0.7.tgz",
     "@atomist/sdm-pack-s3": "file:atomist-sdm-pack-s3-0.5.1.tgz",
     "@atomist/slack-messages": "^1.1.1",
