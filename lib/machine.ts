@@ -12,7 +12,8 @@ import {
     WriteToAllProgressLog,
 } from "@atomist/sdm";
 import { isInLocalMode } from "@atomist/sdm-core";
-import {Build, spawnBuilder} from "@atomist/sdm-pack-build";
+import {BuildingContainer} from "@atomist/sdm-core/lib/goal/container/buildingContainer";
+import {spawnBuilder} from "@atomist/sdm-pack-build";
 
 import {GitProject, logger, Project, RemoteRepoRef} from "@atomist/automation-client";
 import {AppInfo} from "@atomist/sdm/lib/spi/deploy/Deployment";
@@ -20,12 +21,10 @@ import {AppInfo} from "@atomist/sdm/lib/spi/deploy/Deployment";
 
 import {PublishToS3} from "@atomist/sdm-pack-s3";
 
-import {get} from "lodash";
-
 // import * as AWS from "aws-sdk";
 import {cfCreateDistribution} from "./aws/cloudfront";
 import {setGhCheckStatus} from "./listeners/GithubChecks";
-import {asSpawnCommand} from "./util/spawn";
+import {asSpawnCommand, SpawnCommand} from "./util/spawn";
 
 const mkAppInfo = async (p: Project) => {
     return {
@@ -42,13 +41,13 @@ export const mkBashCommand = (cmd: string) => {
     };
 };
 
-export const msgGoal = goal(
+export const thankAuthorInChannelGoal = goal(
     {
         displayName: "msgDisplayName",
     },
     async (gi: GoalInvocation) => {
-        const screenName = gi.sdmGoal.push.after?.author?.person?.chatId?.screenName;
-        const author = gi.sdmGoal.push.commits?.map(el => el?.author?.name)[0];
+        const screenName = gi.goalEvent.push.after?.author?.person?.chatId?.screenName;
+        const author = gi.goalEvent.push.commits?.map(el => el?.author?.name)[0];
 
         if (!!screenName) {
             await gi.context.messageClient.addressUsers(":tada: Thanks for contributing! :relaxed:", screenName);
@@ -61,7 +60,7 @@ export const shouldRebuildSite = pushTest(
     "shouldRebuildSite",
     async (pli: PushListenerInvocation) => {
         const changedFiles = await filesChangedSince(pli.project, pli.push);
-        console.log(`shouldRebuildSite - changedFiles: ${JSON.stringify(changedFiles)}`);
+        logger.info(`shouldRebuildSite - changedFiles: ${JSON.stringify(changedFiles)}`);
 
         if (changedFiles?.length === 1 && changedFiles[0] === "README.md") {
             return false;
@@ -73,7 +72,7 @@ export const shouldRebuildSite = pushTest(
 export const isFluxSiteRepo = pushTest(
     "isFluxSiteRepo",
     async (pli: PushListenerInvocation) => {
-        console.log(`isFluxSiteRepo pushTest: ${pli.push.repo?.owner}/${pli.push.repo?.name}`);
+        logger.info(`isFluxSiteRepo pushTest: ${pli.push.repo?.owner}/${pli.push.repo?.name}`);
         return pli.push.repo?.owner === "voteflux" && pli.push.repo?.name === "flux-website-v2";
     },
 );
@@ -82,7 +81,7 @@ export const isFluxSiteRepo = pushTest(
 const shimLog = (log: WritableLog) => ({
     stripAnsi: true,
     write: (msg: string) => {
-        console.log(`shimLog [${Date()}] ${msg}`);
+        logger.info(`shimLog [${Date()}] ${msg}`);
         log.write(msg);
     },
 });
@@ -112,8 +111,8 @@ export const buildWebsiteOld = goal(
         const rNpmI = await spawnPromise("./dev-docker.sh", ["build"], commonSpawnOpts);
         // var res = await action.spawn("./dev-docker.sh", ["build"], {cwd: action.project.baseDir, log: allLogs});
 
-        console.log(`Docker Build status: ${dockerBuildRes.status}`);
-        console.log(`Jekyll Build status: ${rNpmI.status}`);
+        logger.info(`Docker Build status: ${dockerBuildRes.status}`);
+        logger.info(`Jekyll Build status: ${rNpmI.status}`);
 
         const endTS = new Date();
         const res = rNpmI;
@@ -164,26 +163,34 @@ export const buildWebsiteOld = goal(
     }),
 );
 
-// @ts-ignore
-const toSpawnCommand = (c, i, a) => typeof c === "string" ? asSpawnCommand(c) : c;
+export const buildFluxSiteUsingImage = new BuildingContainer({
+    displayName: "Jekyll Build Container",
+}, {
+    output: [{pattern: {directory: "_site"}, classifier: "flux-site-jekyll-build-output"}],
+    containers: [
+        { name: "", image: "", volumeMounts: [], command: [], env: [{name: "SOME_ENV", value: ""}] },
+    ],
+    name: "Jekyll Build Container (Registration)",
+});
 
-const buildWebsiteBuilder = spawnBuilder({
+// @ts-ignore
+const toSpawnCommand = (c: string | SpawnCommand, i, a): SpawnCommand => typeof c === "string" ? asSpawnCommand(c) : c;
+
+export const buildWebsiteBuilder = spawnBuilder({
     name: "jekyll builder",
     logInterpreter: lastLinesLogInterpreter("Tail of the log:", 10),
     projectToAppInfo: mkAppInfo,
     commands: [
-        // "mkdir -p _site",
-        // mkBashCommand("echo testing > _site/index.html"),
-        "./dev-docker.sh build",
+        "docker build -f ./_docker-dev/Dockerfile -t flux-website-docker-dev:latest .",
+        {
+            command: "bash", args: ["-c",
+                "docker run --rm --mount type=volume,src=flux-site-vol-node,dst=/src/node_modules --mount type=volume,src=flux-site-vol-bundle-gems,dst=/src/.bundle-gems --mount type=volume,src=flux-site-vol-bundle,dst=/src/.bundle --mount type=bind,src=$PWD,dst=/src --env NODE_ENV=production flux-website-docker-dev:latest bash  -c \"npm run --silent build || (npm ci && npm run build)\"",
+            ],
+        },
     ].map(toSpawnCommand),
     async deploymentUnitFor(p: GitProject, appId: AppInfo): Promise<string> {
         return "_site";
     },
-});
-
-export const buildWebsite = new Build({ displayName: "Jekyll Build", uniqueName: "jekyll-build" }).with({
-    name: "Jekyll",
-    builder: buildWebsiteBuilder,
 });
 
 export const publishSitePreview = new PublishToS3({
@@ -193,7 +200,7 @@ export const publishSitePreview = new PublishToS3({
     region: "ap-southeast-2", // use your region
     filesToPublish: ["_site/**/*"],
     pathTranslation: (filepath, gi) => filepath.replace(/^_site/, `${gi.goalEvent.sha.slice(0, 7)}`),
-    pathToIndex: "_site/", // index file in your project
+    pathToIndex: "_site/index.html", // index file in your project
     linkLabel: "S3 Link",
 });
 
@@ -208,7 +215,7 @@ export const makeCloudFrontDistribution = goal(
         }
 
         const distrib = await cfCreateDistribution(shaFrag);
-        // console.log(distrib);
+        // logger.info(distrib);
 
         /*
         // const cf = new AWS.CloudFront();
@@ -257,13 +264,14 @@ export const makeCloudFrontDistribution = goal(
         */
 
         // do this for the moment (always use cloudfront domain) to avoid needing to do R53 stuff
-        const distribUrl = distrib.Distribution?.DomainName ||
-            get(distrib.Distribution?.DistributionConfig.Aliases?.Items, 0, distrib.Distribution?.DomainName);
-        const resultMessageCustomDomains = distrib.Distribution?.DistributionConfig.Aliases?.Items?.map(cname => `## Deployed to: <https://${cname}>`);
+        const distribUrls = ([ distrib.Distribution?.DomainName, ...(distrib.Distribution?.DistributionConfig.Aliases?.Items || []) ])
+            .filter(v => typeof v === "string");
+        // const resultMessageCustomDomains =
         return {
             code: 0,
-            externalUrls: [ {label: `>> Deploy Preview: ${shaFrag} <<`, url: `https://${distribUrl}`} ],
-            message: `# Success\n\n## CloudFront URL: <${distribUrl}>\n\n${resultMessageCustomDomains?.join("\n\n") || ""}`,
+            externalUrls: [ {label: `!! Deploy Preview: ${shaFrag} !!`, url: `https://${distribUrls[0]}/index.html`} ],
+            message: `# Success\n\n${distribUrls.map(cname => `## Deployed to: <https://${cname}>`).join("\n\n") ||
+                "No url available :(\n\n(This means something went wrong)"}`,
         };
     }),
 );

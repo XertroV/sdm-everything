@@ -15,24 +15,27 @@
  */
 
 import { GoalConfigurer } from "@atomist/sdm-core";
-import { HelloWorldGoals } from "./goals";
+import {GitHubChecksListener} from "../listeners/GithubChecks";
+// import {GitHubChecksListener} from "../listeners/GithubChecks";
+import { FluxGoals } from "./goals";
 
 /**
  * Configure the SDM and add fulfillments or listeners to the created goals
  */
-export const HelloWorldGoalConfigurer: GoalConfigurer<HelloWorldGoals> = async (sdm, goals) => {
+export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) => {
 
     // This is a good place to configure your SDM instance and goals with additional listeners or
     // fulfillments
 
-    goals.helloWorld.with({
-        name: "hello-world",
-        goalExecutor: async gi => {
-            const { progressLog, addressChannels } = gi;
+    // goals.app.with({
+    //     name: "hello-world",
+    //     goalExecutor: async gi => {
+    //         const { progressLog, addressChannels } = gi;
+    //
+    //         progressLog.write("Sending 'hello world' to all linked channels");
+    //         await addressChannels("Hello world");
+    //     },
+    // });
 
-            progressLog.write("Sending 'hello world' to all linked channels");
-            await addressChannels("Hello world");
-        },
-    });
-
+    goals.appTest.withExecutionListener(GitHubChecksListener);
 };

@@ -14,19 +14,50 @@
  * limitations under the License.
  */
 
+import {logger} from "@atomist/automation-client";
 import { goal } from "@atomist/sdm";
 import { GoalCreator } from "@atomist/sdm-core";
-import { HelloWorldGoals } from "./goals";
+import {Build} from "@atomist/sdm-pack-build";
+import {GitHubChecksListener} from "../listeners/GithubChecks";
+import {buildWebsiteBuilder, makeCloudFrontDistribution, publishSitePreview, thankAuthorInChannelGoal} from "../machine";
+import {snooze} from "../util";
+import { FluxGoals } from "./goals";
+
+const buildWebsite = new Build({ displayName: "Jekyll Build", uniqueName: "jekyll-build" }).with({
+    name: "Jekyll",
+    builder: buildWebsiteBuilder,
+});
 
 /**
- * Create all goal instances and return an instance of HelloWorldGoals
+ * Create all goal instances and return an instance of FluxGoals
  */
-export const HelloWorldGoalCreator: GoalCreator<HelloWorldGoals> = async sdm => {
+export const FluxGoalCreator: GoalCreator<FluxGoals> = async sdm => {
 
     // This is the place to create the goal instances and return them
     // as part of the goal interface
 
+    const nopGoalF = (ms: number = 200, displayName: string = "NOP Goal - placeholder") => goal({displayName}, async (gi) => {
+        logger.info(`NOP Goal (${displayName}) waiting for (${ms}) ms`);
+        await snooze(ms);
+    });
+
+    const nopGoal = nopGoalF();
+
     return {
-        helloWorld: goal({ displayName: "hello world" }),
+        appAndroidBuild: nopGoal,
+        appAndroidSign: nopGoal,
+        appAndroidUpload: nopGoal,
+        appDocs: nopGoal,
+        appIosBuild: nopGoal,
+        appIosSign: nopGoal,
+        appIosUpload: nopGoal,
+        appLint: nopGoal,
+        appSetup: nopGoal,
+        appTest: nopGoal,
+        siteBuild: buildWebsite.withExecutionListener(GitHubChecksListener),
+        siteGenPreviewPng: nopGoalF(2000, "Generate Preview Screenshot Placeholder"),
+        sitePushS3: publishSitePreview.withExecutionListener(GitHubChecksListener),
+        siteDeployPreviewCloudFront: makeCloudFrontDistribution.withExecutionListener(GitHubChecksListener),
+        msgAuthor: thankAuthorInChannelGoal,
     };
 };

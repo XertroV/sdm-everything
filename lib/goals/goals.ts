@@ -14,15 +14,36 @@
  * limitations under the License.
  */
 
-import { GoalWithFulfillment } from "@atomist/sdm";
+import {GoalWithFulfillment} from "@atomist/sdm";
 import { DeliveryGoals } from "@atomist/sdm-core";
+import {Build} from "@atomist/sdm-pack-build";
+
+type DeliveryGoal = GoalWithFulfillment;
+// type DeliveryGoalExtra = DeliveryGoal | DeliveryGoal[] | DeliveryGoal[][];
+// type DeliveryGoalsExtra = Record<string, DeliveryGoalExtra>;
 
 /**
  * Interface to capture all goals that this SDM will manage
  */
-export interface HelloWorldGoals extends DeliveryGoals {
+export interface FluxGoals extends DeliveryGoals {
+    /** Flux App Goals */
+    appSetup: DeliveryGoal;
+    appTest: DeliveryGoal;
+    appLint: DeliveryGoal;
+    appDocs: DeliveryGoal;
+    appAndroidBuild: DeliveryGoal;
+    appAndroidSign: DeliveryGoal;
+    appAndroidUpload: DeliveryGoal;
+    appIosBuild: DeliveryGoal;
+    appIosSign: DeliveryGoal;
+    appIosUpload: DeliveryGoal;
 
-    /** Simple hello world goal */
-    helloWorld: GoalWithFulfillment;
+    /** Flux Site Goals */
+    siteBuild: Build;
+    siteGenPreviewPng: DeliveryGoal;
+    sitePushS3: GoalWithFulfillment;
+    siteDeployPreviewCloudFront: GoalWithFulfillment;
 
+    /** More general goals */
+    msgAuthor: GoalWithFulfillment;
 }

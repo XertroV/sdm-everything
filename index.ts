@@ -13,64 +13,65 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import {logger} from "@atomist/automation-client";
 import * as os from "os";
 import * as path from "path";
 
-import { CompressingGoalCache, configure } from "@atomist/sdm-core";
-import {GithubChecksListener} from "./lib/listeners/GithubChecks";
-// import { HelloWorldGoals } from "./lib/goals/goals";
-import {buildWebsite, isFluxSiteRepo, makeCloudFrontDistribution, msgGoal, publishSitePreview, shouldRebuildSite} from "./lib/machine";
-
-process.env.AWS_SDK_LOAD_CONFIG = "1";
+import {CompressingGoalCache, configure, isInLocalMode} from "@atomist/sdm-core";
+import {FluxGoalConfigurer} from "./lib/goals/goalConfigurer";
+import {FluxGoalCreator} from "./lib/goals/goalCreator";
+import {FluxGoals} from "./lib/goals/goals";
+import {isFluxSiteRepo, shouldRebuildSite} from "./lib/machine";
+// import { githubLifecycleSupport } from "@atomist/sdm-pack-lifecycle-github";
 
 /**
  * The main entry point into the SDM
  */
-export const configuration = configure(async sdm => {
+export const configuration = configure<FluxGoals>(async sdm => {
 
+    process.env.AWS_SDK_LOAD_CONFIG = "1";
+    process.env.AWS_DEFAULT_REGION = "ap-southeast-2";
+    process.env.AWS_PROFILE = "Flux";
+
+    if (isInLocalMode()) {
+        logger.warn(`Config: ${JSON.stringify(sdm.configuration)}`);
+        process.env.GITHUB_TOKEN = sdm.configuration.sdmLocal.github.token;
+    }
+
+    // sdm.configuration
     sdm.configuration.sdm.cache = {
         enabled: true,
         path: path.join(os.homedir(), ".atomist", "cache"),
         store: new CompressingGoalCache(),
     };
 
+    // I _think_ this will add all the nice msgs to slack, etc
+    // sdm.addExtensionPacks(githubLifecycleSupport());
+
     // Use the sdm instance to configure commands etc
     sdm.addCommand({
-        name: "HelloWorld",
-        description: "Command that responds with a 'hello world'",
-        intent: "flux-hello",
+        name: "FluxCommand",
+        description: "Command that responds with a 'Go Flux!'",
+        intent: "hello",
         listener: async ci => {
-            await ci.addressChannels("Hello World");
+            await ci.addressChannels("Go Flux!");
         },
     });
 
     // Create goals and configure them
-    // const goals = await sdm.createGoals(HelloWorldGoalCreator, [HelloWorldGoalConfigurer]);
-    // console.log(goals);
-
-    // sdm.addGoalExecutionListener(checkGoalExecutionListener);
-    // sdm.addExtensionPacks(githubGoalChecksSupport());
+    const goals = await sdm.createGoals(FluxGoalCreator, [FluxGoalConfigurer]);
 
     // Return all push rules
     return {
-        // hello: {
-        //     test: AnyPush,
-        //     goals: goals.helloWorld,
-        // },
-        // testMsg: {
-        //     test: [],
-        //     goals: [],
-        // },
-        websiteBuild: {
+        fluxSite: {
             test: [
                 isFluxSiteRepo,
                 shouldRebuildSite,
             ],
             goals: [
-                msgGoal,
-                buildWebsite.withExecutionListener(GithubChecksListener),
-                publishSitePreview.withExecutionListener(GithubChecksListener),
-                makeCloudFrontDistribution.withExecutionListener(GithubChecksListener),
+                [goals.msgAuthor, goals.siteBuild],
+                [goals.siteGenPreviewPng, goals.sitePushS3],
+                goals.siteDeployPreviewCloudFront,
             ],
         },
     };

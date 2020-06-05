@@ -4,7 +4,6 @@ import {SpawnOptions} from "child_process";
  * The first two arguments to Node spawn
  */
 export interface SpawnCommand {
-
     command: string;
     args?: string[];
     options?: any;
