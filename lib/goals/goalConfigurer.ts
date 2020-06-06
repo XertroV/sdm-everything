@@ -16,8 +16,8 @@
 
 import {GoalConfigurer} from "@atomist/sdm-core/lib/machine/configure";
 import {GitHubChecksListener} from "../listeners/GithubChecks";
-// import {GitHubChecksListener} from "../listeners/GithubChecks";
 import { FluxGoals } from "./goals";
+import {outputCacheListnerF} from "../listeners/OutputCache";
 
 /**
  * Configure the SDM and add fulfillments or listeners to the created goals
@@ -37,5 +37,13 @@ export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) 
     //     },
     // });
 
-    goals.appTest.withExecutionListener(GitHubChecksListener);
+    const { siteBuild, siteDeployPreviewCloudFront, siteGenPreviewPng, sitePushS3 } = goals;
+
+    siteBuild
+        .withExecutionListener(GitHubChecksListener)
+        .withProjectListener(outputCacheListnerF());
+
+    sitePushS3.withExecutionListener(GitHubChecksListener);
+    siteGenPreviewPng.withExecutionListener(GitHubChecksListener);
+    siteDeployPreviewCloudFront.withExecutionListener(GitHubChecksListener);
 };

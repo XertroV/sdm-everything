@@ -16,7 +16,6 @@
 
 import {GoalCreator} from "@atomist/sdm-core/lib/machine/configure";
 import {Build} from "@atomist/sdm-pack-build";
-import {GitHubChecksListener} from "../listeners/GithubChecks";
 import {buildWebsiteBuilder, makeCloudFrontDistribution, publishSitePreview, thankAuthorInChannelGoal} from "../machine";
 import {snooze} from "../util";
 import { FluxGoals } from "./goals";
@@ -54,10 +53,10 @@ export const FluxGoalCreator: GoalCreator<FluxGoals> = async sdm => {
         appLint: nopGoal,
         appSetup: nopGoal,
         appTest: nopGoal,
-        siteBuild: buildWebsite.withExecutionListener(GitHubChecksListener),
+        siteBuild: buildWebsite,
         siteGenPreviewPng: nopGoalF(2000, "Generate Preview Screenshot Placeholder"),
-        sitePushS3: publishSitePreview.withExecutionListener(GitHubChecksListener),
-        siteDeployPreviewCloudFront: makeCloudFrontDistribution.withExecutionListener(GitHubChecksListener),
+        sitePushS3: publishSitePreview,
+        siteDeployPreviewCloudFront: makeCloudFrontDistribution,
         msgAuthor: thankAuthorInChannelGoal,
     };
 };

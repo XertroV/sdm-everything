@@ -29,14 +29,12 @@ import {logger} from "@atomist/automation-client/lib/util/logger";
 
 process.env.AWS_SDK_LOAD_CONFIG = "1";
 process.env.AWS_DEFAULT_REGION = "ap-southeast-2";
-process.env.AWS_PROFILE = "Flux";
+process.env.AWS_PROFILE = "flux";
 
 /**
  * The main entry point into the SDM
  */
 export const configuration = configure<FluxGoals>(async sdm => {
-
-
     if (isInLocalMode()) {
         logger.warn(`Config: ${JSON.stringify(sdm.configuration)}`);
         process.env.GITHUB_TOKEN = sdm.configuration.sdmLocal.github.token;
