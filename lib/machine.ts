@@ -150,20 +150,19 @@ export const buildWebsiteOld = goal(
         });
 
         const logFileName = `jekyll-build-${Date.now()}-${gi.goalEvent.sha.slice(0, 8)}`;
+        // magic string we print in `npm run build`
+        const [preJekyllBuild, jekyllBuild] = collectStdOut.log.split("--JEKYLL-BUILD--");
+        const jBuildOrPre = jekyllBuild || preJekyllBuild;
 
         if (didError) {
-            // magic string we print in `npm run build`
-            const [preJekyllErr, jekyllErr] = collectStdOut.log.split("--JEKYLL-BUILD--");
-            const errToSend = jekyllErr || preJekyllErr;
-
             await gi.addressChannels({
                 title: `Jekyll build failed; status: ${res.status}`,
-                content: `JEKYLL BUILD ERROR:\n\n${errToSend}`,
+                content: `JEKYLL BUILD ERROR:\n\n${jBuildOrPre}`,
                 fileName: logFileName,
                 fileType: `text`,
             });
         } else {
-            // await action.addressChannels({
+            // await gi.addressChannels({
             //     // title: `Jekyll build succeeded!`,
             //     // content: collectStdOut.log.split("\n").reverse().slice(0, 30).reverse().join("\n"),
             //     // fileName: logFileName,
@@ -171,7 +170,15 @@ export const buildWebsiteOld = goal(
             // });
         }
 
-        return { code: res.status !== 0 ? (res.status || -1) : res.status }; // as ExecuteGoalResult; // { code: res.code }
+        const message = collectStdOut.log;
+        const common = { message };
+        return res.status !== 0 ? {
+            code: res.status || -1,
+            ...common
+        } : {
+            code: 0,
+            ...common,
+        };
     }),
 );
 

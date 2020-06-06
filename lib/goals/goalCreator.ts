@@ -22,7 +22,7 @@ import { FluxGoals } from "./goals";
 import {goal} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
 import {logger} from "@atomist/automation-client/lib/util/logger";
 
-const buildWebsite = new Build({ displayName: "Jekyll Build", uniqueName: "jekyll-build" }).with({
+const buildWebsite = new Build({ displayName: "Jekyll Build" }).with({
     name: "Jekyll",
     builder: buildWebsiteBuilder,
 });
