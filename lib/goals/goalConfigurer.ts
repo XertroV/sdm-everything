@@ -17,33 +17,37 @@
 import {GoalConfigurer} from "@atomist/sdm-core/lib/machine/configure";
 import {GitHubChecksListener} from "../listeners/GithubChecks";
 import { FluxGoals } from "./goals";
-import {outputCacheListnerF} from "../listeners/OutputCache";
+import {cacheRestore, cachePut} from "@atomist/sdm-core/lib/goal/cache/goalCaching";
+import {NpmNodeModulesCachePut, NpmNodeModulesCacheRestore} from "@atomist/sdm-pack-node/lib/listener/npm";
+
+const jekyllClassifier = "_site";
+const jekyllCachePut = cachePut({
+    entries: [{
+        pattern: {directory: "_site"},
+        classifier: jekyllClassifier
+    }]
+});
+const jekyllCacheRestore = cacheRestore({
+    entries: [{ classifier: jekyllClassifier }],
+});
 
 /**
  * Configure the SDM and add fulfillments or listeners to the created goals
  */
 export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) => {
 
-    // This is a good place to configure your SDM instance and goals with additional listeners or
-    // fulfillments
-
-    // goals.app.with({
-    //     name: "hello-world",
-    //     goalExecutor: async gi => {
-    //         const { progressLog, addressChannels } = gi;
-    //
-    //         progressLog.write("Sending 'hello world' to all linked channels");
-    //         await addressChannels("Hello world");
-    //     },
-    // });
-
+    // website stuff
     const { siteBuild, siteDeployPreviewCloudFront, siteGenPreviewPng, sitePushS3 } = goals;
 
     siteBuild
         .withExecutionListener(GitHubChecksListener)
-        .withProjectListener(outputCacheListnerF());
+        .withProjectListener(NpmNodeModulesCacheRestore)
+        .withProjectListener(NpmNodeModulesCachePut)
+        .withProjectListener(jekyllCachePut)
 
-    sitePushS3.withExecutionListener(GitHubChecksListener);
+    sitePushS3.withExecutionListener(GitHubChecksListener)
+        .withProjectListener(jekyllCacheRestore);
+
     siteGenPreviewPng.withExecutionListener(GitHubChecksListener);
     siteDeployPreviewCloudFront.withExecutionListener(GitHubChecksListener);
 };

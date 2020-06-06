@@ -30,6 +30,7 @@
     "@atomist/sdm": "1.8.0",
     "@atomist/sdm-core": "1.8.0",
     "@atomist/sdm-pack-build": "file:atomist-sdm-pack-build-1.0.7.tgz",
+    "@atomist/sdm-pack-node": "^1.2.0-master.20191111164040",
     "@atomist/sdm-pack-s3": "file:atomist-sdm-pack-s3-0.5.1.tgz",
     "@atomist/slack-messages": "^1.1.1",
     "@graphql-codegen/core": "1.7.0",

@@ -48,7 +48,6 @@ export const configuration = configure<FluxGoals>(async sdm => {
         store: new CompressingGoalCache(),
     };
 
-    // I _think_ this will add all the nice msgs to slack, etc
     sdm.addExtensionPacks(
         // githubLifecycleSupport(),
         // githubGoalStatusSupport(),
