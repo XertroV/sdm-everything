@@ -72,7 +72,7 @@ export const configuration = configure<FluxGoals>(async sdm => {
                 shouldRebuildSite,
             ],
             goals: [
-                [goals.msgAuthor, goals.siteBuild],
+                goals.msgAuthor, goals.siteBuild,
                 [goals.siteGenPreviewPng, goals.sitePushS3],
                 goals.siteDeployPreviewCloudFront,
             ],

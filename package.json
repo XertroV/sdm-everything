@@ -26,9 +26,9 @@
     "@types/puppeteer": "^3.0.0"
   },
   "dependencies": {
-    "@atomist/automation-client": "^1.9.1-1.9-fixes.20200311123135",
-    "@atomist/sdm": "^1.9.1-1.9-fixes.20200318141711",
-    "@atomist/sdm-core": "^1.9.1-1.9-fixes.20200311140020",
+    "@atomist/automation-client": "~1.8.1",
+    "@atomist/sdm": "~1.8.0",
+    "@atomist/sdm-core": "~1.8.0",
     "@atomist/sdm-pack-build": "file:atomist-sdm-pack-build-1.0.7.tgz",
     "@atomist/sdm-pack-s3": "file:atomist-sdm-pack-s3-0.5.1.tgz",
     "@atomist/slack-messages": "^1.1.1",
@@ -46,7 +46,7 @@
     "winston": "^3.2.1"
   },
   "devDependencies": {
-    "@atomist/sdm-local": "file:atomist-sdm-local-1.2.2.tgz",
+    "@atomist/sdm-local": "~1.2.0",
     "@octokit/types": "^4.1.6",
     "@types/lodash": "^4.14.144",
     "@types/mocha": "^5.2.7",
