@@ -46,7 +46,7 @@
     "winston": "^3.2.1"
   },
   "devDependencies": {
-    "@atomist/sdm-local": "1.2.2-master.20191206162119",
+    "@atomist/sdm-local": "file:atomist-sdm-local-1.2.2.tgz",
     "@octokit/types": "^4.1.6",
     "@types/lodash": "^4.14.144",
     "@types/mocha": "^5.2.7",
