@@ -25,6 +25,7 @@ import {FluxGoalCreator} from "./lib/goals/goalCreator";
 import {FluxGoals} from "./lib/goals/goals";
 import {isFluxSiteRepo, shouldRebuildSite} from "./lib/machine";
 import {logger} from "@atomist/automation-client/lib/util/logger";
+// import {githubGoalStatusSupport} from "@atomist/sdm-core";
 // import { githubLifecycleSupport } from "@atomist/sdm-pack-lifecycle-github";
 
 process.env.AWS_SDK_LOAD_CONFIG = "1";
@@ -48,7 +49,10 @@ export const configuration = configure<FluxGoals>(async sdm => {
     };
 
     // I _think_ this will add all the nice msgs to slack, etc
-    // sdm.addExtensionPacks(githubLifecycleSupport());
+    sdm.addExtensionPacks(
+        // githubLifecycleSupport(),
+        // githubGoalStatusSupport(),
+    );
 
     // Use the sdm instance to configure commands etc
     sdm.addCommand({
@@ -60,10 +64,7 @@ export const configuration = configure<FluxGoals>(async sdm => {
         },
     });
 
-    // Create goals and configure them
     const goals = await sdm.createGoals(FluxGoalCreator, [FluxGoalConfigurer]);
-
-    // Return all push rules
     return {
         fluxSite: {
             test: [
@@ -71,8 +72,7 @@ export const configuration = configure<FluxGoals>(async sdm => {
                 shouldRebuildSite,
             ],
             goals: [
-                goals.msgAuthor,
-                goals.siteBuild,
+                [goals.msgAuthor, goals.siteBuild],
                 [goals.siteGenPreviewPng, goals.sitePushS3],
                 goals.siteDeployPreviewCloudFront,
             ],
