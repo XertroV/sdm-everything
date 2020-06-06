@@ -26,9 +26,9 @@
     "@types/puppeteer": "^3.0.0"
   },
   "dependencies": {
-    "@atomist/automation-client": "~1.8.1",
-    "@atomist/sdm": "~1.8.0",
-    "@atomist/sdm-core": "~1.8.0",
+    "@atomist/automation-client": "1.8.0",
+    "@atomist/sdm": "1.8.0",
+    "@atomist/sdm-core": "1.8.0",
     "@atomist/sdm-pack-build": "file:atomist-sdm-pack-build-1.0.7.tgz",
     "@atomist/sdm-pack-s3": "file:atomist-sdm-pack-s3-0.5.1.tgz",
     "@atomist/slack-messages": "^1.1.1",
