@@ -16,42 +16,34 @@
 
 import {GoalConfigurer} from "@atomist/sdm-core/lib/machine/configure";
 import {GitHubChecksListener} from "../listeners/GithubChecks";
-import { FluxGoals } from "./goals";
-import {cacheRestore, cachePut, GoalCacheOptions} from "@atomist/sdm-core/lib/goal/cache/goalCaching";
+import {FluxGoals} from "./goals";
 import {NpmNodeModulesCachePut, NpmNodeModulesCacheRestore} from "@atomist/sdm-pack-node/lib/listener/npm";
 import {isFlutterProject} from "./app/pushTests";
 import {batchSpawn} from "../util/spawn";
-import _ = require("lodash");
-import {GoalWithFulfillment} from "@atomist/sdm";
+import {mkCacheFuncs} from "../utils/cache";
 
-
-const mkCacheFuncs = (classifier: string, cacheOpts?: Partial<GoalCacheOptions>, directory?: string) => {
-    return {
-        put: cachePut({
-            entries: [{
-                pattern: { directory: directory || classifier },
-                classifier
-            }],
-            ...cacheOpts,
-        }),
-        restore: cacheRestore({
-            entries: [{ classifier }],
-            ...cacheOpts,
-        }),
-        classifier,
-    }
-};
-
-const flutterPubCache = mkCacheFuncs("pub", {
+/* todo: can we do this bit well? Do we need it? */
+const flutterPubCache = mkCacheFuncs("flutter-pub-cache", {
     pushTest: isFlutterProject,
     onCacheMiss: [{
         name: "flutter packages get",
-        listener: async (p, gi) => batchSpawn([
-            ["flutter", ["packages", "get"], {cwd: p.baseDir, log: gi.progressLog}],
-            ["flutter", ["precache"], {cwd: p.baseDir, log: gi.progressLog}],
-        ]),
+        listener: async (p, gi) => {
+            // todo: disabled for the mo
+            return { code: 0 };
+            const opts = {cwd: p.baseDir, log: gi.progressLog};
+            await batchSpawn([
+                ["flutter", ["precache"], opts],
+                ["flutter", ["packages", "get"], opts],
+            ]);
+        },
     }]
-});
+}, ".pub-cache");
+const flutterApkCache = mkCacheFuncs("flutter-build", {
+    pushTest: isFlutterProject,
+}, "build/app/outputs/apk/release/app-release.apk");
+const flutterIpaCache = mkCacheFuncs("flutter-build", {
+    pushTest: isFlutterProject,
+}, "ios/build/Runner.ipa");
 const jekyllCache = mkCacheFuncs("_site");
 
 
@@ -62,22 +54,31 @@ export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) 
 
     // app stuff
 
-    _.mapValues(goals, (g: GoalWithFulfillment) => {
-        if (_.has(g, 'withProjectListener')) {
-            g.withProjectListener(flutterPubCache.put);
-            g.withProjectListener(flutterPubCache.restore);
-        }
-    })
+    // _.mapValues(goals, (g: GoalWithFulfillment) => {
+    //     if (_.has(g, 'withProjectListener')) {
+    //         g.withProjectListener(flutterPubCache.put);
+    //         g.withProjectListener(flutterPubCache.restore);
+    //     }
+    // })
+
     // const { appAndroidBuild, appAndroidSign, appAndroidUpload, appDocs, appIosBuild, appIosSign, appIosUpload, appLint, appSetup, appIosTest, appAndroidTest } = goals;
-    const {appAndroidBuild, appIosBuild} = goals;
+    const {appAndroidBuild, appIosBuild, appIosTest, appAndroidTest, appIosSign, appAndroidSign} = goals;
 
-    appIosBuild
-        .withProjectListener(flutterPubCache.restore)
-        .withProjectListener(flutterPubCache.put)
-
+    // flutter pub cache
+    [appIosBuild, appAndroidBuild, appIosTest, appAndroidTest].map(goal => {
+        goal
+            .withProjectListener(flutterPubCache.restore)
+            .withProjectListener(flutterPubCache.put)
+    });
     appAndroidBuild
-        .withProjectListener(flutterPubCache.restore)
-        .withProjectListener(flutterPubCache.put)
+        .withProjectListener(flutterApkCache.put)
+    appIosBuild
+        .withProjectListener(flutterIpaCache.put)
+
+    appAndroidSign
+        .withProjectListener(flutterApkCache.restore);
+    appIosSign
+        .withProjectListener(flutterIpaCache.restore);
 
     // website stuff
     const { siteBuild, siteDeployPreviewCloudFront, siteGenPreviewPng, sitePushS3 } = goals;

@@ -66,6 +66,18 @@ export const configuration = configure<FluxGoals>(async sdm => {
 
     const goals = await sdm.createGoals(FluxGoalCreator, [FluxGoalConfigurer]);
     return {
+        nop: {
+            goals: [goals.nop]
+        },
+        fluxApp: {
+            goals: [
+                goals.appFlutterInfo,
+                [goals.nop, goals.appAndroidTest],
+                goals.appAndroidBuild,
+                goals.appAndroidSign,
+                goals.appAndroidUpload,
+            ]
+        },
         fluxSite: {
             test: [
                 isFluxSiteRepo,
