@@ -1,24 +1,6 @@
-// import {
-//     addressChannelsProgressLog,
-//     doWithProject,
-//     filesChangedSince,
-//     goal,
-//     GoalInvocation, lastLinesLogInterpreter,
-//     LoggingProgressLog, ProjectAwareGoalInvocation,
-//     PushListenerInvocation,
-//     pushTest, spawnPromise,
-//     StringCapturingProgressLog,
-//     WritableLog,
-//     WriteToAllProgressLog,
-// } from "@atomist/sdm";
-//
-// import { isInLocalMode } from "@atomist/sdm-core";
-// import {BuildingContainer} from "@atomist/sdm-core/lib/goal/container/buildingContainer";
-// import {spawnBuilder} from "@atomist/sdm-pack-build";
-
 import {RemoteRepoRef} from "@atomist/automation-client/lib/operations/common/RepoId";
 import {Project} from "@atomist/automation-client/lib/project/Project";
-import {spawnPromise, WritableLog} from "@atomist/automation-client/lib/util/child_process";
+import {WritableLog} from "@atomist/automation-client/lib/util/child_process";
 import {logger} from "@atomist/automation-client/lib/util/logger";
 import {addressChannelsProgressLog} from "@atomist/sdm/lib/api-helper/log/addressChannelsProgressLog";
 import {LoggingProgressLog} from "@atomist/sdm/lib/api-helper/log/LoggingProgressLog";
@@ -37,6 +19,7 @@ import {asSpawnCommand, SpawnCommand} from "./util/spawn";
 import {isInLocalMode} from "@atomist/sdm-core/lib/internal/machine/modes";
 import {spawnBuilder} from "@atomist/sdm-pack-build";
 import {PublishToS3} from "@atomist/sdm-pack-s3";
+import {spawnLog} from "@atomist/sdm/lib/api-helper/misc/child_process";
 
 const mkAppInfo = async (p: Project) => {
     return {
@@ -73,11 +56,7 @@ export const shouldRebuildSite = pushTest(
     async (pli: PushListenerInvocation) => {
         const changedFiles = await filesChangedSince(pli.project, pli.push);
         logger.info(`shouldRebuildSite - changedFiles: ${JSON.stringify(changedFiles)}`);
-
-        if (changedFiles?.length === 1 && changedFiles[0] === "README.md") {
-            return false;
-        }
-        return true;
+        return !(changedFiles?.length === 1 && changedFiles[0] === "README.md");
     },
 );
 
@@ -119,8 +98,8 @@ export const buildWebsiteOld = goal(
 
         const commonSpawnOpts = {cwd: gi.project.baseDir, log: allLogs};
         const dockerBuildArgs = [" build", "-f", "./_docker-dev/Dockerfile", "-t", "flux-website-docker-dev:latest", "."];
-        const dockerBuildRes = await spawnPromise("docker", dockerBuildArgs, commonSpawnOpts);
-        const rNpmI = await spawnPromise("./dev-docker.sh", ["build"], commonSpawnOpts);
+        const dockerBuildRes = await spawnLog("docker", dockerBuildArgs, commonSpawnOpts);
+        const rNpmI = await spawnLog("./dev-docker.sh", ["build"], commonSpawnOpts);
         // var res = await action.spawn("./dev-docker.sh", ["build"], {cwd: action.project.baseDir, log: allLogs});
 
         logger.info(`Docker Build status: ${dockerBuildRes.status}`);

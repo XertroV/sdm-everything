@@ -17,24 +17,67 @@
 import {GoalConfigurer} from "@atomist/sdm-core/lib/machine/configure";
 import {GitHubChecksListener} from "../listeners/GithubChecks";
 import { FluxGoals } from "./goals";
-import {cacheRestore, cachePut} from "@atomist/sdm-core/lib/goal/cache/goalCaching";
+import {cacheRestore, cachePut, GoalCacheOptions} from "@atomist/sdm-core/lib/goal/cache/goalCaching";
 import {NpmNodeModulesCachePut, NpmNodeModulesCacheRestore} from "@atomist/sdm-pack-node/lib/listener/npm";
+import {isFlutterProject} from "./app/pushTests";
+import {batchSpawn} from "../util/spawn";
+import _ = require("lodash");
+import {GoalWithFulfillment} from "@atomist/sdm";
 
-const jekyllClassifier = "_site";
-const jekyllCachePut = cachePut({
-    entries: [{
-        pattern: {directory: "_site"},
-        classifier: jekyllClassifier
+
+const mkCacheFuncs = (classifier: string, cacheOpts?: Partial<GoalCacheOptions>, directory?: string) => {
+    return {
+        put: cachePut({
+            entries: [{
+                pattern: { directory: directory || classifier },
+                classifier
+            }],
+            ...cacheOpts,
+        }),
+        restore: cacheRestore({
+            entries: [{ classifier }],
+            ...cacheOpts,
+        }),
+        classifier,
+    }
+};
+
+const flutterPubCache = mkCacheFuncs("pub", {
+    pushTest: isFlutterProject,
+    onCacheMiss: [{
+        name: "flutter packages get",
+        listener: async (p, gi) => batchSpawn([
+            ["flutter", ["packages", "get"], {cwd: p.baseDir, log: gi.progressLog}],
+            ["flutter", ["precache"], {cwd: p.baseDir, log: gi.progressLog}],
+        ]),
     }]
 });
-const jekyllCacheRestore = cacheRestore({
-    entries: [{ classifier: jekyllClassifier }],
-});
+const jekyllCache = mkCacheFuncs("_site");
+
 
 /**
  * Configure the SDM and add fulfillments or listeners to the created goals
  */
 export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) => {
+
+    // app stuff
+
+    _.mapValues(goals, (g: GoalWithFulfillment) => {
+        if (_.has(g, 'withProjectListener')) {
+            g.withProjectListener(flutterPubCache.put);
+            g.withProjectListener(flutterPubCache.restore);
+        }
+    })
+    // const { appAndroidBuild, appAndroidSign, appAndroidUpload, appDocs, appIosBuild, appIosSign, appIosUpload, appLint, appSetup, appIosTest, appAndroidTest } = goals;
+    const {appAndroidBuild, appIosBuild} = goals;
+
+    appIosBuild
+        .withProjectListener(flutterPubCache.restore)
+        .withProjectListener(flutterPubCache.put)
+
+    appAndroidBuild
+        .withProjectListener(flutterPubCache.restore)
+        .withProjectListener(flutterPubCache.put)
 
     // website stuff
     const { siteBuild, siteDeployPreviewCloudFront, siteGenPreviewPng, sitePushS3 } = goals;
@@ -43,10 +86,10 @@ export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) 
         .withExecutionListener(GitHubChecksListener)
         .withProjectListener(NpmNodeModulesCacheRestore)
         .withProjectListener(NpmNodeModulesCachePut)
-        .withProjectListener(jekyllCachePut)
+        .withProjectListener(jekyllCache.put);
 
     sitePushS3.withExecutionListener(GitHubChecksListener)
-        .withProjectListener(jekyllCacheRestore);
+        .withProjectListener(jekyllCache.restore);
 
     siteGenPreviewPng.withExecutionListener(GitHubChecksListener);
     siteDeployPreviewCloudFront.withExecutionListener(GitHubChecksListener);

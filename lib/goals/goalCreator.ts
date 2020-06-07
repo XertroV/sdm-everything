@@ -43,16 +43,18 @@ export const FluxGoalCreator: GoalCreator<FluxGoals> = async sdm => {
     const nopGoal = nopGoalF();
 
     return {
+        nop: nopGoal,
         appAndroidBuild: nopGoal,
         appAndroidSign: nopGoal,
         appAndroidUpload: nopGoal,
+        appAndroidTest: nopGoal,
         appDocs: nopGoal,
         appIosBuild: nopGoal,
         appIosSign: nopGoal,
         appIosUpload: nopGoal,
+        appIosTest: nopGoal,
         appLint: nopGoal,
         appSetup: nopGoal,
-        appTest: nopGoal,
         siteBuild: buildWebsite,
         siteGenPreviewPng: nopGoalF(2000, "Generate Preview Screenshot Placeholder"),
         sitePushS3: publishSitePreview,

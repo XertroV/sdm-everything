@@ -26,14 +26,17 @@ type DeliveryGoal = GoalWithFulfillment;
  * Interface to capture all goals that this SDM will manage
  */
 export interface FluxGoals extends DeliveryGoals {
+    nop: DeliveryGoal;
+
     /** Flux App Goals */
     appSetup: DeliveryGoal;
-    appTest: DeliveryGoal;
     appLint: DeliveryGoal;
     appDocs: DeliveryGoal;
+    appAndroidTest: DeliveryGoal;
     appAndroidBuild: DeliveryGoal;
     appAndroidSign: DeliveryGoal;
     appAndroidUpload: DeliveryGoal;
+    appIosTest: DeliveryGoal;
     appIosBuild: DeliveryGoal;
     appIosSign: DeliveryGoal;
     appIosUpload: DeliveryGoal;

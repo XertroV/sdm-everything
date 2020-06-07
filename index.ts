@@ -25,6 +25,7 @@ import {FluxGoalCreator} from "./lib/goals/goalCreator";
 import {FluxGoals} from "./lib/goals/goals";
 import {isFluxSiteRepo, shouldRebuildSite} from "./lib/machine";
 import {logger} from "@atomist/automation-client/lib/util/logger";
+import {githubGoalStatusSupport} from "@atomist/sdm-core";
 // import {githubGoalStatusSupport} from "@atomist/sdm-core";
 // import { githubLifecycleSupport } from "@atomist/sdm-pack-lifecycle-github";
 
@@ -50,7 +51,7 @@ export const configuration = configure<FluxGoals>(async sdm => {
 
     sdm.addExtensionPacks(
         // githubLifecycleSupport(),
-        // githubGoalStatusSupport(),
+        githubGoalStatusSupport(),
     );
 
     // Use the sdm instance to configure commands etc
@@ -71,7 +72,8 @@ export const configuration = configure<FluxGoals>(async sdm => {
                 shouldRebuildSite,
             ],
             goals: [
-                goals.msgAuthor, goals.siteBuild,
+                goals.nop,
+                [goals.msgAuthor, goals.siteBuild],
                 [goals.siteGenPreviewPng, goals.sitePushS3],
                 goals.siteDeployPreviewCloudFront,
             ],
