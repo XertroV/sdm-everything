@@ -22,26 +22,32 @@ import {isFlutterProject} from "./app/pushTests";
 import {batchSpawn} from "../util/spawn";
 import {mkCacheFuncs} from "../utils/cache";
 
-/* todo: can we do this bit well? Do we need it? */
-const flutterPubCache = mkCacheFuncs("flutter-pub-cache", {
+/* todo: can we do this bit better/well? Use PUB_CACHE to set cache location */
+export const flutterPubCache = mkCacheFuncs("flutter-pub-cache", {
     pushTest: isFlutterProject,
     onCacheMiss: [{
         name: "flutter packages get",
         listener: async (p, gi) => {
-            // todo: disabled for the mo
-            return { code: 0 };
             const opts = {cwd: p.baseDir, log: gi.progressLog};
             await batchSpawn([
+                ["mkdir", ["-p", ".pub-cache"], opts],
                 ["flutter", ["precache"], opts],
                 ["flutter", ["packages", "get"], opts],
+                // ["flutter", ["pub", "cache", "repair"], opts],
             ]);
         },
     }]
 }, ".pub-cache");
-const flutterApkCache = mkCacheFuncs("flutter-build", {
+const flutterReleaseApkCache = mkCacheFuncs("flutter-build-apk-release", {
     pushTest: isFlutterProject,
 }, "build/app/outputs/apk/release/app-release.apk");
-const flutterIpaCache = mkCacheFuncs("flutter-build", {
+const flutterDebugApkCache = mkCacheFuncs("flutter-build-apk-debug", {
+    pushTest: isFlutterProject,
+}, "build/app/outputs/apk/release/app-release.apk");
+const flutterDebugIpaCache = mkCacheFuncs("flutter-build-ipa-debug", {
+    pushTest: isFlutterProject,
+}, "ios/build/Runner.ipa");
+const flutterReleaseIpaCache = mkCacheFuncs("flutter-build-ipa-release", {
     pushTest: isFlutterProject,
 }, "ios/build/Runner.ipa");
 const jekyllCache = mkCacheFuncs("_site");
@@ -71,14 +77,14 @@ export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) 
             .withProjectListener(flutterPubCache.put)
     });
     appAndroidBuild
-        .withProjectListener(flutterApkCache.put)
+        .withProjectListener(flutterDebugApkCache.put)
     appIosBuild
-        .withProjectListener(flutterIpaCache.put)
+        .withProjectListener(flutterDebugIpaCache.put)
 
     appAndroidSign
-        .withProjectListener(flutterApkCache.restore);
+        .withProjectListener(flutterReleaseApkCache.put);
     appIosSign
-        .withProjectListener(flutterIpaCache.restore);
+        .withProjectListener(flutterReleaseIpaCache.put);
 
     // website stuff
     const { siteBuild, siteDeployPreviewCloudFront, siteGenPreviewPng, sitePushS3 } = goals;

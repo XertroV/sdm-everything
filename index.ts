@@ -69,11 +69,11 @@ export const configuration = configure<FluxGoals>(async sdm => {
         nop: {
             goals: [goals.nop]
         },
-        fluxApp: {
+        fluxAndroidApp: {
             goals: [
                 goals.appFlutterInfo,
-                [goals.nop, goals.appAndroidTest],
                 goals.appAndroidBuild,
+                goals.appAndroidTest,
                 goals.appAndroidSign,
                 goals.appAndroidUpload,
             ]

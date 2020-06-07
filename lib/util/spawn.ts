@@ -1,5 +1,7 @@
 import {SpawnOptions} from "child_process";
 import {spawnLog, SpawnLogResult} from "@atomist/sdm";
+import {jSz} from "./index";
+import {logger} from "@atomist/automation-client";
 
 /**
  * The first two arguments to Node spawn
@@ -37,7 +39,13 @@ type SpawnLogArgs = FunctionArgs<typeof spawnLog>;
 export async function batchSpawn(spawns: SpawnLogArgs[]) {
     let lastResult = { code: -1, message: "Empty array given to batchSpawn.", cmdString: "<empty>" } as SpawnLogResult;
     for (let i = 0; i < spawns.length; i++) {
-        lastResult = await spawnLog(...(spawns[i]));
+        const next = spawns[i];
+        if (next[0].includes(" ")) {
+            logger.error(`Command given to batchSpawn has a space in it: ${next[0]}. This will likely fail.`)
+        }
+        await spawnLog("echo", [`///--(batch-${i}: ${next[0]} '${next[1].map(jSz).join("' '")}' )--`], next[2]);
+        lastResult = await spawnLog(...(next));
+        await spawnLog("echo", [`\\\\\\--(batch-${i})--`], next[2]);
         if (lastResult.code !== 0) {
             return lastResult;
         }
