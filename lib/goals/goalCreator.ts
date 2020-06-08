@@ -16,9 +16,9 @@
 
 import {GoalCreator} from "@atomist/sdm-core/lib/machine/configure";
 import {Build} from "@atomist/sdm-pack-build";
-import {buildWebsiteBuilder, makeCloudFrontDistribution, publishSitePreview, thankAuthorInChannelGoal} from "../machine";
+import {buildWebsiteBuilder, makeCloudFrontDistribution, thankAuthorInChannelGoal} from "../machine";
 import {snooze} from "../util";
-import { FluxGoals } from "./goals";
+import {FluxGoals, fluxSitePreviewBucket, mkAppUploadFilename} from "./goals";
 import {goal, GoalWithFulfillment} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
 import {logger} from "@atomist/automation-client/lib/util/logger";
 import {batchSpawn} from "../util/spawn";
@@ -26,11 +26,6 @@ import {and} from "@atomist/sdm/lib/api/mapping/support/pushTestUtils";
 import {doWithProject, pushTest as mkPushTest, PushTest, spawnLog, SpawnLogOptions} from "@atomist/sdm";
 import {PublishToS3} from "@atomist/sdm-pack-s3";
 import {GoalInvocation} from "@atomist/sdm/lib/api/goal/GoalInvocation";
-
-const buildWebsite = new Build({ displayName: "Jekyll Build" }).with({
-    name: "Jekyll",
-    builder: buildWebsiteBuilder,
-});
 
 
 /**
@@ -102,11 +97,15 @@ const appAndroidBuild: GoalWithFulfillment = appGoalF("Flutter-Android-Build", [
     ["flutter", ["packages", "get"]],
     ["flutter", ["clean"]],
     ["flutter", ["build", "apk", "--debug"]],
-    ["cp", ["build/app/outputs/apk/debug/app-debug.apk", "build/app/outputs/apk/debug/fluxApp-latest-build.apk"]]
+    ["cp", ["build/app/outputs/apk/debug/app-debug.apk", "build/app/outputs/apk/debug/fluxApp-latest-build.apk"]],
+    ["ls", ["-al", "build/app/outputs/apk/debug/"]],
+    ["ls", ["-al", "build/app/outputs/apk/"]],
 ])
 const appAndroidSign: GoalWithFulfillment = appGoalF("Flutter-Android-Sign", [
-    ["echo", ["placeholder", "appAndroidSign"]]
+    ["ls", ["-al", "build/app/outputs/apk/debug/"]],
+    ["ls", ["-al", "build/app/outputs/apk/"]],
 ]);
+
 
 // const appAndroidUpload = appGoalF("Flutter-Android-Upload", []);
 const appAndroidDebugUpload = new PublishToS3({
@@ -117,12 +116,37 @@ const appAndroidDebugUpload = new PublishToS3({
     filesToPublish: ["build/app/outputs/apk/debug/app-debug.apk", "build/app/outputs/apk/debug/fluxApp-latest-build.apk"], // , "build/app/outputs/apk/debug/app-debug.aab"],
     pathTranslation: (filepath: string, gi: GoalInvocation) => {
         return filepath
-            .replace(/^build\/app\/outputs\/apk\/debug/, "")
-            .replace(/app-debug.apk/, `fluxApp-${gi.goalEvent.sha.slice(0, 7)}.apk`)
+            .replace(/^build\/app\/outputs\/apk\/debug/, "android")
+            .replace(/app-debug.apk/, mkAppUploadFilename(gi.goalEvent, 'apk'))
     },
-    pathToIndex: "fluxApp-latest-build.apk", // index file in your project
+    pathToIndex: `android/fluxApp-latest-build.apk`, // index file in your project
     linkLabel: "Download APK",
 });
+
+
+/**
+ * Website Goals
+ */
+
+
+// Build event for site
+const buildWebsite = new Build({ displayName: "Jekyll Build" }).with({
+    name: "Jekyll",
+    builder: buildWebsiteBuilder,
+});
+
+
+const publishSitePreview = new PublishToS3({
+    displayName: "Publish to S3",
+    uniqueName: "publish-preview-to-s3",
+    bucketName: fluxSitePreviewBucket,
+    region: "ap-southeast-2", // use your region
+    filesToPublish: ["_site/**/*"],
+    pathTranslation: (filepath: string, gi: GoalInvocation) => filepath.replace(/^_site/, `${gi.goalEvent.sha.slice(0, 7)}`),
+    pathToIndex: "_site/index.html", // index file in your project
+    linkLabel: "S3 Link",
+});
+
 
 /**
  * Create all goal instances and return an instance of FluxGoals

@@ -27,7 +27,7 @@ import {isFluxSiteRepo, shouldRebuildSite} from "./lib/machine";
 import {logger} from "@atomist/automation-client/lib/util/logger";
 import {githubGoalStatusSupport} from "@atomist/sdm-core";
 // import {githubGoalStatusSupport} from "@atomist/sdm-core";
-// import { githubLifecycleSupport } from "@atomist/sdm-pack-lifecycle-github";
+import { githubLifecycleSupport } from "@atomist/sdm-pack-lifecycle-github";
 
 process.env.AWS_SDK_LOAD_CONFIG = "1";
 process.env.AWS_DEFAULT_REGION = "ap-southeast-2";
@@ -50,7 +50,7 @@ export const configuration = configure<FluxGoals>(async sdm => {
     };
 
     sdm.addExtensionPacks(
-        // githubLifecycleSupport(),
+        githubLifecycleSupport(),
         githubGoalStatusSupport(),
     );
 
@@ -66,16 +66,12 @@ export const configuration = configure<FluxGoals>(async sdm => {
 
     const goals = await sdm.createGoals(FluxGoalCreator, [FluxGoalConfigurer]);
     return {
-        nop: {
-            goals: [goals.nop]
-        },
         fluxAndroidApp: {
             goals: [
                 goals.appFlutterInfo,
                 goals.appAndroidBuild,
-                goals.appAndroidTest,
-                goals.appAndroidSign,
-                goals.appAndroidDebugUpload,
+                [goals.appAndroidTest, goals.appAndroidDebugUpload],
+                // goals.appAndroidSign,
             ]
         },
         fluxSite: {

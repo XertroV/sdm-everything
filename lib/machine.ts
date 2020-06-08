@@ -18,7 +18,6 @@ import {setGhCheckStatus} from "./listeners/GithubChecks";
 import {asSpawnCommand, SpawnCommand} from "./util/spawn";
 import {isInLocalMode} from "@atomist/sdm-core/lib/internal/machine/modes";
 import {spawnBuilder} from "@atomist/sdm-pack-build";
-import {PublishToS3} from "@atomist/sdm-pack-s3";
 import {spawnLog} from "@atomist/sdm/lib/api-helper/misc/child_process";
 
 const mkAppInfo = async (p: Project) => {
@@ -184,16 +183,6 @@ export const buildWebsiteBuilder = spawnBuilder({
     ].map(toSpawnCommand)
 });
 
-export const publishSitePreview = new PublishToS3({
-    displayName: "Publish to S3",
-    uniqueName: "publish-preview-to-s3",
-    bucketName: "preview.flx.dev",
-    region: "ap-southeast-2", // use your region
-    filesToPublish: ["_site/**/*"],
-    pathTranslation: (filepath: string, gi: GoalInvocation) => filepath.replace(/^_site/, `${gi.goalEvent.sha.slice(0, 7)}`),
-    pathToIndex: "_site/index.html", // index file in your project
-    linkLabel: "S3 Link",
-});
 
 export const makeCloudFrontDistribution = goal(
     { displayName: "Deploy Preview (S3/CloudFront)", uniqueName: "deploy-preview-cloudfront" },

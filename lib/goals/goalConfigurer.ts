@@ -16,11 +16,14 @@
 
 import {GoalConfigurer} from "@atomist/sdm-core/lib/machine/configure";
 import {GitHubChecksListener} from "../listeners/GithubChecks";
-import {FluxGoals} from "./goals";
+import {fluxAppPreviewBucket, FluxGoals, mkAppUploadFilename} from "./goals";
 import {NpmNodeModulesCachePut, NpmNodeModulesCacheRestore} from "@atomist/sdm-pack-node/lib/listener/npm";
 import {isFlutterProject} from "./app/pushTests";
 import {batchSpawn} from "../util/spawn";
 import {mkCacheFuncs} from "../utils/cache";
+import {goal} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
+import {doWithProject, GoalFulfillmentCallback, SdmGoalEvent} from "@atomist/sdm";
+import {getGitHubApi} from "../util/github";
 
 /* todo: can we do this bit better/well? Use PUB_CACHE to set cache location */
 export const flutterPubCache = mkCacheFuncs("flutter-pub-cache", {
@@ -41,18 +44,49 @@ export const flutterPubCache = mkCacheFuncs("flutter-pub-cache", {
 
 const flutterReleaseApkCache = mkCacheFuncs("flutter-build-apk-release", {
     pushTest: isFlutterProject,
-}, "build/app/outputs/apk/release/app-release.apk");
+}, "build/app/outputs/apk/release/");
 const flutterDebugApkCache = mkCacheFuncs("flutter-build-apk-debug", {
     pushTest: isFlutterProject,
-}, "build/app/outputs/apk/debug/app-debug.apk");
+}, "build/app/outputs/apk/debug/");
 
 const flutterReleaseIpaCache = mkCacheFuncs("flutter-build-ipa-release", {
     pushTest: isFlutterProject,
-}, "ios/build/Runner.ipa");
+}, "ios/build/");
 const flutterDebugIpaCache = mkCacheFuncs("flutter-build-ipa-debug", {
     pushTest: isFlutterProject,
-}, "ios/build/Runner.ipa");
+}, "ios/build/");
 
+
+const flutterAndroidUploadDebugCB: GoalFulfillmentCallback = {
+    goal: goal({displayName: "report-exact-upload"}, doWithProject(async gi => {
+            const fname = mkAppUploadFilename(gi.goalEvent, 'apk');
+            gi.progressLog.write(`s3-upload-debug-apk:${fname}`);
+        })
+    ),
+    callback: async (sge, rc): Promise<SdmGoalEvent> => {
+        const fname = mkAppUploadFilename(sge, 'apk');
+        const body = `### Build outputs for ${rc.id.sha}
+        
+        * S3 Link: <http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/${fname}>
+        * S3 Link: <http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/fluxApp-latest-build.apk>
+        
+        :tada:`;
+        const gh = getGitHubApi(rc);
+        const ownerAndRepo = { owner: rc.id.owner, repo: rc.id.repo };
+        const prs = await gh.pulls.list(ownerAndRepo).then(prs => prs.data.filter(v => v.head.sha === rc.id.sha))
+        await Promise.all(prs.map(pr => gh.issues.createComment({ ...ownerAndRepo, body, issue_number: pr.number})));
+        return sge;
+    },
+};
+
+
+/**
+ * Website Goal Config data
+ */
+
+/**
+ * Cache funcs for jekyll builds
+ */
 const jekyllCache = mkCacheFuncs("_site");
 
 
@@ -71,7 +105,7 @@ export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) 
     // })
 
     // const { appAndroidBuild, appAndroidSign, appAndroidUpload, appDocs, appIosBuild, appIosSign, appIosUpload, appLint, appSetup, appIosTest, appAndroidTest } = goals;
-    const {appAndroidBuild, appIosBuild, appIosTest, appAndroidTest, appIosSign, appAndroidSign} = goals;
+    const {appAndroidBuild, appIosBuild, appIosTest, appAndroidTest, appIosSign, appAndroidSign, appAndroidDebugUpload} = goals;
 
     // flutter pub cache
     [appIosBuild, appAndroidBuild, appIosTest, appAndroidTest].map(goal => {
@@ -85,9 +119,15 @@ export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) 
         .withProjectListener(flutterDebugIpaCache.put)
 
     appAndroidSign
+        .withProjectListener(flutterReleaseApkCache.restore)
         .withProjectListener(flutterReleaseApkCache.put);
     appIosSign
+        .withProjectListener(flutterReleaseIpaCache.restore)
         .withProjectListener(flutterReleaseIpaCache.put);
+
+    appAndroidDebugUpload
+        .withProjectListener(flutterDebugApkCache.restore)
+        .withCallback(flutterAndroidUploadDebugCB);
 
     // website stuff
     const { siteBuild, siteDeployPreviewCloudFront, siteGenPreviewPng, sitePushS3 } = goals;

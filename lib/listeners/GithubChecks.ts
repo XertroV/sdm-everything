@@ -1,17 +1,3 @@
-/*
-import {
-    GoalExecutionListener,
-    GoalExecutionListenerInvocation,
-    // GoalInvocation,
-    // GoalProjectListener,
-    // GoalProjectListenerEvent,
-    // GoalProjectListenerRegistration,
-} from "@atomist/sdm";
-import {isInLocalMode} from "@atomist/sdm-core";
-import {SdmGoalState} from "@atomist/sdm/lib/typings/types";
-import {Octokit} from "@octokit/rest";
-*/
-import {TokenCredentials} from "@atomist/automation-client/lib/operations/common/ProjectOperationCredentials";
 import {logger} from "@atomist/automation-client/lib/util/logger";
 import {isInLocalMode} from "@atomist/sdm-core/lib/internal/machine/modes";
 import {SdmGoalState} from "@atomist/sdm-core/lib/typings/types";
@@ -19,6 +5,7 @@ import {GoalExecutionListener, GoalExecutionListenerInvocation} from "@atomist/s
 import {get} from "lodash";
 
 import {Octokit} from "@octokit/rest";
+import {getGitHubApi} from "../util/github";
 
 export const mkGithubCheckOutput = (title: string, summary: string, text?: string) => {
     return { title, summary, text };
@@ -38,8 +25,7 @@ interface GhCheckStatusOpts {
 
 export const setGhCheckStatus =
     async ({name, gi, status, conclusion, startTS, endTS, output}: GhCheckStatusOpts) => {
-        const ghToken = (gi.credentials as TokenCredentials).token;
-        const gh = new Octokit({auth: `token ${ghToken}`});
+        const gh = getGitHubApi(gi);
 
         if (isInLocalMode()) {
             logger.warn(`(Local mode) Skipping GitHub check: ${name}. New status: ${status}. Conclusion: ${conclusion}`);

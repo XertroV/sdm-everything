@@ -44,9 +44,11 @@ export async function batchSpawn(spawns: SpawnLogArgs[]) {
         if (next[0].includes(" ")) {
             logger.error(`Command given to batchSpawn has a space in it: ${next[0]}. This will likely fail.`)
         }
-        await spawnLog("echo", [`///--(batch-${i}: ${next[0]} '${next[1].map(jSz).join("' '")}' )--`], next[2]);
+        logger.info(`///--(batch-${i}: ${next[0]} '${next[1].map(jSz).join("' '")}' )--`);
+        // await spawnLog("echo", [`///--(batch-${i}: ${next[0]} '${next[1].map(jSz).join("' '")}' )--`], next[2]);
         lastResult = await spawnLog(...(next));
-        await spawnLog("echo", [`\\\\\\--(batch-${i})--`], next[2]);
+        // await spawnLog("echo", [`\\\\\\--(batch-${i})--`], next[2]);
+        logger.info(`\\\\\\--(batch-${i})--`);
         if (lastResult.code !== 0) {
             return lastResult;
         }

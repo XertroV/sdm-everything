@@ -17,10 +17,16 @@
 import {DeliveryGoals} from "@atomist/sdm-core/lib/machine/configure";
 import {Build} from "@atomist/sdm-pack-build";
 import {GoalWithFulfillment} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
+import {SdmGoalEvent} from "@atomist/sdm";
 
 type DeliveryGoal = GoalWithFulfillment;
-// type DeliveryGoalExtra = DeliveryGoal | DeliveryGoal[] | DeliveryGoal[][];
-// type DeliveryGoalsExtra = Record<string, DeliveryGoalExtra>;
+
+
+export const fluxAppPreviewBucket = "preview.flx.dev";
+export const fluxSitePreviewBucket = "preview.flx.dev";
+
+export const mkAppUploadFilename = (ge: SdmGoalEvent, ext: string): string =>
+    `fluxApp-${ge.sha.slice(0, 7)}.${ext}`
 
 /**
  * Interface to capture all goals that this SDM will manage
