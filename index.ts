@@ -50,7 +50,7 @@ export const configuration = configure<FluxGoals>(async sdm => {
     };
 
     sdm.addExtensionPacks(
-        githubLifecycleSupport(),
+        // githubLifecycleSupport(),
         githubGoalStatusSupport(),
     );
 
