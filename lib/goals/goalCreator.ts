@@ -31,8 +31,8 @@ import {GoalInvocation} from "@atomist/sdm/lib/api/goal/GoalInvocation";
 /**
  * PushTest that always returns true.
  */
-const ptTrue: PushTest = mkPushTest("always True", async () => true);
-const ptFalse: PushTest = mkPushTest("always False", async () => false);
+export const ptTrue: PushTest = mkPushTest("always True", async () => true);
+export const ptFalse: PushTest = mkPushTest("always False", async () => false);
 
 
 /**
@@ -158,7 +158,7 @@ export const FluxGoalCreator: GoalCreator<FluxGoals> = async sdm => {
     const nopGoalF = (ms: number = 200, displayName: string = "NOP Goal - placeholder") => goal({displayName}, async (gi) => {
         logger.info(`NOP Goal (${displayName}) waiting for (${ms}) ms`);
         await snooze(ms);
-    }, {pushTest: ptFalse});
+    });
 
     const nopGoal = nopGoalF();
 

@@ -1,4 +1,5 @@
 import * as puppeteer from "puppeteer";
+import {goal} from "@atomist/sdm";
 
 export const getScreenshotFromHtmlOnDisk = async (rootDir: string, filePath: string) => {
     // don't include the no-sandbox stuff yet, check performance
@@ -8,3 +9,5 @@ export const getScreenshotFromHtmlOnDisk = async (rootDir: string, filePath: str
     await page.screenshot({path: "buddy-screenshot.png"});
     await browser.close();
 };
+
+export const siteGenPreviewPng = goal({displayName: ""})

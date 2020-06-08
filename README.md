@@ -24,6 +24,10 @@ an SDM.
 
 [atomist-doc]: https://docs.atomist.com/ (Atomist Documentation)
 
+## Issues
+
+- [ ] CloudFront preview can fail due to CNAME being associated with a different distribution; check to see if that's due to same git hash -> but new distrib, how to check existing distribs?
+
 ## Getting started
 
 See the [Developer Quick Start][atomist-quick] to jump straight to

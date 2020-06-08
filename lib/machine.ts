@@ -19,6 +19,7 @@ import {asSpawnCommand, SpawnCommand} from "./util/spawn";
 import {isInLocalMode} from "@atomist/sdm-core/lib/internal/machine/modes";
 import {spawnBuilder} from "@atomist/sdm-pack-build";
 import {spawnLog} from "@atomist/sdm/lib/api-helper/misc/child_process";
+import {addCommentToRelevantPR, getGitHubApi} from "./util/github";
 
 const mkAppInfo = async (p: Project) => {
     return {
@@ -195,61 +196,18 @@ export const makeCloudFrontDistribution = goal(
         }
 
         const distrib = await cfCreateDistribution(shaFrag);
-        // logger.info(distrib);
-
-        /*
-        // const cf = new AWS.CloudFront();
-        // const originId = `S3-preview-website-origin-${shaFrag}`;
-        // // const origin = await cf.createCloudFrontOriginAccessIdentity({
-        // //     CloudFrontOriginAccessIdentityConfig: {CallerReference: mkCallerRef(), Comment: `S3-origin-preview-${shaFrag}`}
-        // // })
-        // const distrib = await cf.createDistribution({
-        //     DistributionConfig: {
-        //         CallerReference: mkCallerRef(),
-        //         Comment: `S3-flux-website-preview-${shaFrag}`,
-        //         DefaultCacheBehavior: {
-        //             ForwardedValues: {
-        //                 QueryString: false,
-        //                 Cookies: {Forward: 'none'},
-        //             },
-        //             TargetOriginId: originId,
-        //             TrustedSigners: {
-        //                 Enabled: false,
-        //                 Quantity: 0
-        //             },
-        //             ViewerProtocolPolicy: "redirect-to-https",
-        //             MinTTL: 600,
-        //         },
-        //         Origins: {
-        //             Quantity: 1,
-        //             Items: [
-        //                 {
-        //                     OriginPath: `/${shaFrag}/`,
-        //                     DomainName: `preview.flx.dev.s3-website-ap-southeast-2.amazonaws.com`,
-        //                     Id: originId,
-        //                     S3OriginConfig: {
-        //                         OriginAccessIdentity: "",
-        //                     }// as AWS.CloudFront.S3OriginConfig
-        //                 }// as AWS.CloudFront.Origin
-        //             ]
-        //         },
-        //         Enabled: true,
-        //         // ViewerProtocolPolicy: "redirect-to-https"
-        //     }
-        // } as AWS.CloudFront.CreateDistributionRequest
-        // //, (err, val) => {});
-        // );
-        // aws s3 sync _site/ s3://preview.flx.dev/test/ --acl public-read --expires $(expr $(date +%s) + $(expr 7 \* 86400))
-        // aws configure set preview.cloudfront true && aws cloudfront create-invalidation --distribution-id <dist-id> --paths /index.html
-        */
 
         // do this for the moment (always use cloudfront domain) to avoid needing to do R53 stuff
         const distribUrls = ([ distrib.Distribution?.DomainName, ...(distrib.Distribution?.DistributionConfig.Aliases?.Items || []) ])
             .filter(v => typeof v === "string");
         // const resultMessageCustomDomains =
+        const url = `https://${distribUrls[0]}`;
+        await addCommentToRelevantPR(pa, await getGitHubApi(pa), `### Deploy Preview
+
+Cloudfront (takes a minute or two to appear): <${url}>`);
         return {
             code: 0,
-            externalUrls: [ {label: `!! Deploy Preview: ${shaFrag} !!`, url: `https://${distribUrls[0]}/index.html`} ],
+            externalUrls: [ {label: `!! Deploy Preview: ${shaFrag} !!`, url} ],
             message: `# Success\n\n${distribUrls.map(cname => `## Deployed to: <https://${cname}>`).join("\n\n") ||
                 "No url available :(\n\n(This means something went wrong)"}`,
         };

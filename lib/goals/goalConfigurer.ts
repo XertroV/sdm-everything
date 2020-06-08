@@ -22,7 +22,7 @@ import {isFlutterProject} from "./app/pushTests";
 import {batchSpawn} from "../util/spawn";
 import {mkCacheFuncs} from "../utils/cache";
 import {GoalExecutionListener} from "@atomist/sdm";
-import {getGitHubApi} from "../util/github";
+import {addCommentToRelevantPR, getGitHubApi} from "../util/github";
 import {logger} from "@atomist/automation-client";
 
 /* todo: can we do this bit better/well? Use PUB_CACHE to set cache location */
@@ -70,9 +70,7 @@ const flutterAndroidUploadDebugGithubPRComment: GoalExecutionListener = async (g
 :tada:`;
     await gi.addressChannels(`Build output for ${gi.id.sha?.slice(0, 7)}: http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/${fname}`);
     const gh = await getGitHubApi(gi);
-    const ownerAndRepo = { owner: gi.id.owner, repo: gi.id.repo };
-    const prs = await gh.pulls.list(ownerAndRepo).then(prs => prs.data.filter(v => v.head.sha === gi.id.sha));
-    await Promise.all(prs.map(pr => gh.issues.createComment({ ...ownerAndRepo, body, issue_number: pr.number})));
+    await addCommentToRelevantPR(gi, gh, body);
 };
 
 
