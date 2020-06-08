@@ -24,6 +24,8 @@ import {logger} from "@atomist/automation-client/lib/util/logger";
 import {batchSpawn} from "../util/spawn";
 import {and} from "@atomist/sdm/lib/api/mapping/support/pushTestUtils";
 import {doWithProject, pushTest as mkPushTest, PushTest, spawnLog, SpawnLogOptions} from "@atomist/sdm";
+import {PublishToS3} from "@atomist/sdm-pack-s3";
+import {GoalInvocation} from "@atomist/sdm/lib/api/goal/GoalInvocation";
 
 const buildWebsite = new Build({ displayName: "Jekyll Build" }).with({
     name: "Jekyll",
@@ -62,7 +64,6 @@ const appGoalF = (
     restrictRepoOwners: string[] | null = ["voteflux", "xertrov"],
     restrictRepoNames: string[] | null = ["voting_app"],
 ): GoalWithFulfillment => {
-    const env = flutterEnv;
     const pushTest = and(
         restrictRepoOwners !== null ? async gi => restrictRepoOwners.includes(gi.id.owner.toLowerCase()) : ptTrue,
         restrictRepoNames !== null ? async gi => ["voting_app"].includes(gi.id.repo) : ptTrue,
@@ -70,8 +71,9 @@ const appGoalF = (
     return goal({
         displayName
     }, doWithProject(async pagi => {
+        const env = { ...flutterEnv, PUB_CACHE: `${pagi.project.baseDir}` };
         // logging, env vars, and working dir
-        const opts: SpawnLogOptions = { log: pagi.progressLog, env, cwd: pagi.project.baseDir };
+        const opts: SpawnLogOptions = { log: pagi.progressLog, cwd: pagi.project.baseDir };
         await spawnLog("mkdir", ["-p", ".pub-cache"], opts);
         // compose the commands to run, mixing in opts.
         return await batchSpawn(spawns.map(
@@ -79,7 +81,7 @@ const appGoalF = (
             ([cmd, args=[], otherOpts={}]) => ([cmd, args, {
                 ...(opts),
                 ...(otherOpts),
-                env: { ...(opts.env), ...(otherOpts?.env || {}), PUB_CACHE: `${pagi.project.baseDir}` }
+                env: { ...env, ...(otherOpts?.env || {}), PUB_CACHE: env.PUB_CACHE },
             }])
         ));
     }), { pushTest });
@@ -89,7 +91,6 @@ const appFlutterInfo = appGoalF("Flutter-Info", [
     ["flutter", ["--version"]],
     ["flutter", ["doctor", "-v"]],
 ])
-const appAndroidUpload = appGoalF("Flutter-Android-Upload", []);
 const appAndroidTest = appGoalF("Flutter-Android-Test", [
     ["env", []],
     ["pwd", []],
@@ -101,11 +102,27 @@ const appAndroidBuild: GoalWithFulfillment = appGoalF("Flutter-Android-Build", [
     ["flutter", ["packages", "get"]],
     ["flutter", ["clean"]],
     ["flutter", ["build", "apk", "--debug"]],
+    ["cp", ["build/app/outputs/apk/debug/app-debug.apk", "build/app/outputs/apk/debug/fluxApp-latest-build.apk"]]
 ])
 const appAndroidSign: GoalWithFulfillment = appGoalF("Flutter-Android-Sign", [
     ["echo", ["placeholder", "appAndroidSign"]]
 ]);
 
+// const appAndroidUpload = appGoalF("Flutter-Android-Upload", []);
+const appAndroidDebugUpload = new PublishToS3({
+    displayName: "Flutter-Android-Debug-Upload",
+    uniqueName: "flutter-android-debug-upload-s3",
+    bucketName: "preview.flx.dev",
+    region: "ap-southeast-2", // use your region
+    filesToPublish: ["build/app/outputs/apk/debug/app-debug.apk", "build/app/outputs/apk/debug/fluxApp-latest-build.apk"], // , "build/app/outputs/apk/debug/app-debug.aab"],
+    pathTranslation: (filepath: string, gi: GoalInvocation) => {
+        return filepath
+            .replace(/^build\/app\/outputs\/apk\/debug/, "")
+            .replace(/app-debug.apk/, `fluxApp-${gi.goalEvent.sha.slice(0, 7)}.apk`)
+    },
+    pathToIndex: "fluxApp-latest-build.apk", // index file in your project
+    linkLabel: "Download APK",
+});
 
 /**
  * Create all goal instances and return an instance of FluxGoals
@@ -126,12 +143,14 @@ export const FluxGoalCreator: GoalCreator<FluxGoals> = async sdm => {
         appFlutterInfo,
         appAndroidBuild,
         appAndroidSign,
-        appAndroidUpload,
         appAndroidTest,
+        appAndroidDebugUpload,
+        appAndroidReleaseUpload:nopGoal,
         appDocs: nopGoal,
         appIosBuild: nopGoal,
         appIosSign: nopGoal,
-        appIosUpload: nopGoal,
+        appIosDebugUpload: nopGoal,
+        appIosReleaseUpload: nopGoal,
         appIosTest: nopGoal,
         appLint: nopGoal,
         appSetup: nopGoal,

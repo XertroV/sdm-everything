@@ -28,7 +28,7 @@ export const flutterPubCache = mkCacheFuncs("flutter-pub-cache", {
     onCacheMiss: [{
         name: "flutter packages get",
         listener: async (p, gi) => {
-            const opts = {cwd: p.baseDir, log: gi.progressLog};
+            const opts = {cwd: p.baseDir, log: gi.progressLog, env: { ...process.env, PUB_CACHE: p.baseDir }};
             await batchSpawn([
                 ["mkdir", ["-p", ".pub-cache"], opts],
                 ["flutter", ["precache"], opts],
@@ -38,18 +38,21 @@ export const flutterPubCache = mkCacheFuncs("flutter-pub-cache", {
         },
     }]
 }, ".pub-cache");
+
 const flutterReleaseApkCache = mkCacheFuncs("flutter-build-apk-release", {
     pushTest: isFlutterProject,
 }, "build/app/outputs/apk/release/app-release.apk");
 const flutterDebugApkCache = mkCacheFuncs("flutter-build-apk-debug", {
     pushTest: isFlutterProject,
-}, "build/app/outputs/apk/release/app-release.apk");
-const flutterDebugIpaCache = mkCacheFuncs("flutter-build-ipa-debug", {
-    pushTest: isFlutterProject,
-}, "ios/build/Runner.ipa");
+}, "build/app/outputs/apk/debug/app-debug.apk");
+
 const flutterReleaseIpaCache = mkCacheFuncs("flutter-build-ipa-release", {
     pushTest: isFlutterProject,
 }, "ios/build/Runner.ipa");
+const flutterDebugIpaCache = mkCacheFuncs("flutter-build-ipa-debug", {
+    pushTest: isFlutterProject,
+}, "ios/build/Runner.ipa");
+
 const jekyllCache = mkCacheFuncs("_site");
 
 

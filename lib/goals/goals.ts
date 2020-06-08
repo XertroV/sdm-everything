@@ -35,11 +35,13 @@ export interface FluxGoals extends DeliveryGoals {
     appAndroidTest: DeliveryGoal;
     appAndroidBuild: DeliveryGoal;
     appAndroidSign: DeliveryGoal;
-    appAndroidUpload: DeliveryGoal;
+    appAndroidReleaseUpload: DeliveryGoal;
+    appAndroidDebugUpload: DeliveryGoal;
     appIosTest: DeliveryGoal;
     appIosBuild: DeliveryGoal;
     appIosSign: DeliveryGoal;
-    appIosUpload: DeliveryGoal;
+    appIosDebugUpload: DeliveryGoal;
+    appIosReleaseUpload: DeliveryGoal;
 
     /** Flux Site Goals */
     siteBuild: Build;

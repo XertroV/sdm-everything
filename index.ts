@@ -75,7 +75,7 @@ export const configuration = configure<FluxGoals>(async sdm => {
                 goals.appAndroidBuild,
                 goals.appAndroidTest,
                 goals.appAndroidSign,
-                goals.appAndroidUpload,
+                goals.appAndroidDebugUpload,
             ]
         },
         fluxSite: {

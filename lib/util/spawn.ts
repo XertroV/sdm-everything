@@ -38,6 +38,7 @@ type SpawnLogArgs = FunctionArgs<typeof spawnLog>;
 
 export async function batchSpawn(spawns: SpawnLogArgs[]) {
     let lastResult = { code: -1, message: "Empty array given to batchSpawn.", cmdString: "<empty>" } as SpawnLogResult;
+    const commands = [];
     for (let i = 0; i < spawns.length; i++) {
         const next = spawns[i];
         if (next[0].includes(" ")) {
@@ -49,6 +50,10 @@ export async function batchSpawn(spawns: SpawnLogArgs[]) {
         if (lastResult.code !== 0) {
             return lastResult;
         }
+        commands.push(lastResult.cmdString)
     }
-    return lastResult;
+    return {
+        ...lastResult,
+        cmdString: commands.join("\n"),
+    };
 }
