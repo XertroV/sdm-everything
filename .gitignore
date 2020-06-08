@@ -19,8 +19,4 @@ node_modules/
 git-info.json
 /lib/typings/types.ts
 
-# flutter files, obtained by running flutter in this directory
-.flutter*
-# tgz of local atomist packages used to experiment moving to newest pre-2.0.0 codebase
-atomist-*.tgz
 
