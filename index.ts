@@ -70,7 +70,7 @@ export const configuration = configure<FluxGoals>(async sdm => {
             goals: [
                 goals.appFlutterInfo,
                 goals.appAndroidBuild,
-                [goals.appAndroidTest, goals.appAndroidDebugUpload],
+                [goals.appAndroidTest, goals.appAndroidUploadDebug],
                 // goals.appAndroidSign,
             ]
         },

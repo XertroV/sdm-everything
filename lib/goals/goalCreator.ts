@@ -108,7 +108,7 @@ const appAndroidSign: GoalWithFulfillment = appGoalF("Flutter-Android-Sign", [
 
 
 // const appAndroidUpload = appGoalF("Flutter-Android-Upload", []);
-const appAndroidDebugUpload = new PublishToS3({
+const appAndroidUploadDebug = new PublishToS3({
     displayName: "Flutter-Android-Debug-Upload",
     uniqueName: "flutter-android-debug-upload-s3",
     bucketName: "preview.flx.dev",
@@ -168,7 +168,7 @@ export const FluxGoalCreator: GoalCreator<FluxGoals> = async sdm => {
         appAndroidBuild,
         appAndroidSign,
         appAndroidTest,
-        appAndroidDebugUpload,
+        appAndroidUploadDebug,
         appAndroidReleaseUpload:nopGoal,
         appDocs: nopGoal,
         appIosBuild: nopGoal,

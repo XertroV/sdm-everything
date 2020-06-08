@@ -21,8 +21,7 @@ import {NpmNodeModulesCachePut, NpmNodeModulesCacheRestore} from "@atomist/sdm-p
 import {isFlutterProject} from "./app/pushTests";
 import {batchSpawn} from "../util/spawn";
 import {mkCacheFuncs} from "../utils/cache";
-import {goal} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
-import {doWithProject, GoalFulfillmentCallback, SdmGoalEvent} from "@atomist/sdm";
+import {Goal, GoalFulfillmentCallback, SdmGoalEvent} from "@atomist/sdm";
 import {getGitHubApi} from "../util/github";
 
 /* todo: can we do this bit better/well? Use PUB_CACHE to set cache location */
@@ -57,12 +56,8 @@ const flutterDebugIpaCache = mkCacheFuncs("flutter-build-ipa-debug", {
 }, "ios/build/");
 
 
-const flutterAndroidUploadDebugCB: GoalFulfillmentCallback = {
-    goal: goal({displayName: "report-exact-upload"}, doWithProject(async gi => {
-            const fname = mkAppUploadFilename(gi.goalEvent, 'apk');
-            gi.progressLog.write(`s3-upload-debug-apk:${fname}`);
-        })
-    ),
+const flutterAndroidUploadDebugCB = (goal: Goal): GoalFulfillmentCallback => ({
+    goal,
     callback: async (sge, rc): Promise<SdmGoalEvent> => {
         const fname = mkAppUploadFilename(sge, 'apk');
         const body = `### Build outputs for ${rc.id.sha}
@@ -77,7 +72,7 @@ const flutterAndroidUploadDebugCB: GoalFulfillmentCallback = {
         await Promise.all(prs.map(pr => gh.issues.createComment({ ...ownerAndRepo, body, issue_number: pr.number})));
         return sge;
     },
-};
+});
 
 
 /**
@@ -105,7 +100,7 @@ export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) 
     // })
 
     // const { appAndroidBuild, appAndroidSign, appAndroidUpload, appDocs, appIosBuild, appIosSign, appIosUpload, appLint, appSetup, appIosTest, appAndroidTest } = goals;
-    const {appAndroidBuild, appIosBuild, appIosTest, appAndroidTest, appIosSign, appAndroidSign, appAndroidDebugUpload} = goals;
+    const {appAndroidBuild, appIosBuild, appIosTest, appAndroidTest, appIosSign, appAndroidSign, appAndroidUploadDebug} = goals;
 
     // flutter pub cache
     [appIosBuild, appAndroidBuild, appIosTest, appAndroidTest].map(goal => {
@@ -125,9 +120,9 @@ export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) 
         .withProjectListener(flutterReleaseIpaCache.restore)
         .withProjectListener(flutterReleaseIpaCache.put);
 
-    appAndroidDebugUpload
+    appAndroidUploadDebug
         .withProjectListener(flutterDebugApkCache.restore)
-        .withCallback(flutterAndroidUploadDebugCB);
+        .withCallback(flutterAndroidUploadDebugCB(appAndroidUploadDebug));
 
     // website stuff
     const { siteBuild, siteDeployPreviewCloudFront, siteGenPreviewPng, sitePushS3 } = goals;
