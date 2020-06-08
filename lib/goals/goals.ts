@@ -35,7 +35,7 @@ export interface FluxGoals extends DeliveryGoals {
     nop: DeliveryGoal;
 
     /** Flux App Goals */
-    appSetup: DeliveryGoal;
+    appFlutterInfo: DeliveryGoal;
     appLint: DeliveryGoal;
     appDocs: DeliveryGoal;
     appAndroidTest: DeliveryGoal;

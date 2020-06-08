@@ -1,5 +1,5 @@
 // import AWS = require("aws-sdk");
-import * as assert from "power-assert";
+import assert from "power-assert";
 import {cfCreateDistribution, cfDeleteDistribution} from "../lib/aws/cloudfront";
 
 describe("cloudfront core", () => {

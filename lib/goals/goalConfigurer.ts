@@ -21,8 +21,9 @@ import {NpmNodeModulesCachePut, NpmNodeModulesCacheRestore} from "@atomist/sdm-p
 import {isFlutterProject} from "./app/pushTests";
 import {batchSpawn} from "../util/spawn";
 import {mkCacheFuncs} from "../utils/cache";
-import {Goal, GoalFulfillmentCallback, SdmGoalEvent} from "@atomist/sdm";
+import {GoalExecutionListener} from "@atomist/sdm";
 import {getGitHubApi} from "../util/github";
+import {logger} from "@atomist/automation-client";
 
 /* todo: can we do this bit better/well? Use PUB_CACHE to set cache location */
 export const flutterPubCache = mkCacheFuncs("flutter-pub-cache", {
@@ -56,23 +57,23 @@ const flutterDebugIpaCache = mkCacheFuncs("flutter-build-ipa-debug", {
 }, "ios/build/");
 
 
-const flutterAndroidUploadDebugCB = (goal: Goal): GoalFulfillmentCallback => ({
-    goal,
-    callback: async (sge, rc): Promise<SdmGoalEvent> => {
-        const fname = mkAppUploadFilename(sge, 'apk');
-        const body = `### Build outputs for ${rc.id.sha}
-        
-        * S3 Link: <http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/${fname}>
-        * S3 Link: <http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/fluxApp-latest-build.apk>
-        
-        :tada:`;
-        const gh = getGitHubApi(rc);
-        const ownerAndRepo = { owner: rc.id.owner, repo: rc.id.repo };
-        const prs = await gh.pulls.list(ownerAndRepo).then(prs => prs.data.filter(v => v.head.sha === rc.id.sha))
-        await Promise.all(prs.map(pr => gh.issues.createComment({ ...ownerAndRepo, body, issue_number: pr.number})));
-        return sge;
-    },
-});
+const flutterAndroidUploadDebugGithubPRComment: GoalExecutionListener = async (gi): Promise<void> => {
+    if (gi.goalEvent.state !== "success") {
+        return;
+    }
+    const fname = mkAppUploadFilename(gi.goalEvent, 'apk');
+    const body = `### Build outputs for ${gi.id.sha};
+
+* S3 Link: <http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/${fname}>
+* S3 Link: <http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/fluxApp-latest-build.apk>
+
+:tada:`;
+    await gi.addressChannels(`Build output for ${gi.id.sha?.slice(0, 7)}: http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/${fname}`);
+    const gh = await getGitHubApi(gi);
+    const ownerAndRepo = { owner: gi.id.owner, repo: gi.id.repo };
+    const prs = await gh.pulls.list(ownerAndRepo).then(prs => prs.data.filter(v => v.head.sha === gi.id.sha));
+    await Promise.all(prs.map(pr => gh.issues.createComment({ ...ownerAndRepo, body, issue_number: pr.number})));
+};
 
 
 /**
@@ -91,7 +92,6 @@ const jekyllCache = mkCacheFuncs("_site");
 export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) => {
 
     // app stuff
-
     // _.mapValues(goals, (g: GoalWithFulfillment) => {
     //     if (_.has(g, 'withProjectListener')) {
     //         g.withProjectListener(flutterPubCache.put);
@@ -99,7 +99,9 @@ export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) 
     //     }
     // })
 
-    // const { appAndroidBuild, appAndroidSign, appAndroidUpload, appDocs, appIosBuild, appIosSign, appIosUpload, appLint, appSetup, appIosTest, appAndroidTest } = goals;
+    // goals.appFlutterInfo
+    //     .withExecutionListener(flutterAndroidUploadDebugGithubPRComment);
+
     const {appAndroidBuild, appIosBuild, appIosTest, appAndroidTest, appIosSign, appAndroidSign, appAndroidUploadDebug} = goals;
 
     // flutter pub cache
@@ -122,7 +124,7 @@ export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) 
 
     appAndroidUploadDebug
         .withProjectListener(flutterDebugApkCache.restore)
-        .withCallback(flutterAndroidUploadDebugCB(appAndroidUploadDebug));
+        .withExecutionListener(flutterAndroidUploadDebugGithubPRComment);
 
     // website stuff
     const { siteBuild, siteDeployPreviewCloudFront, siteGenPreviewPng, sitePushS3 } = goals;
@@ -138,4 +140,6 @@ export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) 
 
     siteGenPreviewPng.withExecutionListener(GitHubChecksListener);
     siteDeployPreviewCloudFront.withExecutionListener(GitHubChecksListener);
+
+    logger.info("Finished setting up goal configuration.");
 };

@@ -25,7 +25,7 @@ interface GhCheckStatusOpts {
 
 export const setGhCheckStatus =
     async ({name, gi, status, conclusion, startTS, endTS, output}: GhCheckStatusOpts) => {
-        const gh = getGitHubApi(gi);
+        const gh = await getGitHubApi(gi);
 
         if (isInLocalMode()) {
             logger.warn(`(Local mode) Skipping GitHub check: ${name}. New status: ${status}. Conclusion: ${conclusion}`);
