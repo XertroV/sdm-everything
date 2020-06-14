@@ -53,8 +53,9 @@ export interface FluxGoals extends DeliveryGoals {
     siteBuild: Build;
     siteGenPreviewPng: DeliveryGoal;
     sitePushS3: GoalWithFulfillment;
+    sitePushS3Indexes: GoalWithFulfillment;
     siteDeployPreviewCloudFront: GoalWithFulfillment;
 
     /** More general goals */
-    msgAuthor: GoalWithFulfillment;
+    // msgAuthor: GoalWithFulfillment;
 }

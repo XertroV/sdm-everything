@@ -25,8 +25,6 @@ export const cfCreateDistribution = async (shaFrag: string, opts?: {originId?: s
         MinimumProtocolVersion: "TLSv1.2_2018",
     };
 
-
-
     const distrib = await cf.createDistribution({
         DistributionConfig: {
             Aliases: {

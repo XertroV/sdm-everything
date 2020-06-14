@@ -135,6 +135,8 @@ export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) 
 
     sitePushS3.withExecutionListener(GitHubChecksListener)
         .withProjectListener(jekyllCache.restore);
+    goals.sitePushS3Indexes.withExecutionListener(GitHubChecksListener)
+        .withProjectListener(jekyllCache.restore);
 
     siteGenPreviewPng.withExecutionListener(GitHubChecksListener);
     siteDeployPreviewCloudFront.withExecutionListener(GitHubChecksListener);

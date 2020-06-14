@@ -16,6 +16,7 @@
 import {CompressingGoalCache} from "@atomist/sdm-core/lib/goal/cache/CompressingGoalCache";
 import {isInLocalMode} from "@atomist/sdm-core/lib/internal/machine/modes";
 import {configure} from "@atomist/sdm-core/lib/machine/configure";
+import { AutomationEventListener } from "@atomist/automation-client/lib/server/AutomationEventListener";
 
 import * as os from "os";
 import * as path from "path";
@@ -28,10 +29,92 @@ import {logger} from "@atomist/automation-client/lib/util/logger";
 import {githubGoalStatusSupport} from "@atomist/sdm-core";
 import { githubLifecycleSupport } from "@atomist/sdm-pack-lifecycle-github";
 import {isFlutterProject} from "./lib/goals/app/pushTests";
+import {
+    CommandIncoming, EventIncoming,
+    RequestProcessor
+} from "@atomist/automation-client/lib/internal/transport/RequestProcessor";
+import {AutomationClient} from "@atomist/automation-client/lib/automationClient";
+import {HandlerContext} from "@atomist/automation-client/lib/HandlerContext";
+import {CommandInvocation} from "@atomist/automation-client/lib/internal/invoker/Payload";
+import {HandlerResult} from "@atomist/automation-client/lib/HandlerResult";
+import {EventFired} from "@atomist/automation-client/lib/HandleEvent";
+import {Destination, MessageOptions} from "@atomist/automation-client/lib/spi/message/MessageClient";
+import _ from "lodash";
 
 process.env.AWS_SDK_LOAD_CONFIG = "1";
 process.env.AWS_DEFAULT_REGION = "ap-southeast-2";
 process.env.AWS_PROFILE = "flux";
+
+
+
+export class TestAutomationEventListener implements AutomationEventListener {
+
+    public registrationSuccessful(handler: RequestProcessor) {
+        // This is intentionally left empty
+    }
+
+    public startupSuccessful(client: AutomationClient): Promise<void> {
+        return Promise.resolve();
+    }
+
+    public contextCreated(context: HandlerContext) {
+        // This is intentionally left empty
+    }
+
+    public commandIncoming(payload: CommandIncoming) {
+        // This is intentionally left empty
+    }
+
+    public commandStarting(payload: CommandInvocation, ctx: HandlerContext) {
+        // This is intentionally left empty
+    }
+
+    public commandSuccessful(payload: CommandInvocation, ctx: HandlerContext, result: HandlerResult): Promise<void> {
+        return Promise.resolve();
+    }
+
+    public commandFailed(payload: CommandInvocation, ctx: HandlerContext, err: any): Promise<void> {
+        return Promise.resolve();
+    }
+
+    public eventIncoming(payload: EventIncoming) {
+        // This is intentionally left empty
+    }
+
+    public eventStarting(payload: EventFired<any>, ctx: HandlerContext) {
+        // This is intentionally left empty
+    }
+
+    public eventSuccessful(payload: EventFired<any>, ctx: HandlerContext, result: HandlerResult[]): Promise<void> {
+        return Promise.resolve();
+    }
+
+    public eventFailed(payload: EventFired<any>, ctx: HandlerContext, err: any): Promise<void> {
+        return Promise.resolve();
+    }
+
+    public messageSending(message: any,
+                          destinations: Destination | Destination[],
+                          options: MessageOptions,
+                          ctx: HandlerContext): Promise<{ message: any, destinations: Destination | Destination[], options: MessageOptions }> {
+        return Promise.resolve({
+            message,
+            destinations,
+            options,
+        });
+    }
+
+    public messageSent(message: any,
+                       destinations: Destination | Destination[],
+                       options: MessageOptions,
+                       ctx: HandlerContext): Promise<void> {
+        logger.warn(`Sent slack message: ${_.keys(message)}...`);
+        return Promise.resolve();
+    }
+}
+
+
+
 
 /**
  * The main entry point into the SDM
@@ -64,6 +147,13 @@ export const configuration = configure<FluxGoals>(async sdm => {
         },
     });
 
+    if (!sdm.configuration.listeners) {
+        sdm.configuration.listeners = [];
+    }
+    sdm.configuration.listeners.push(
+        new TestAutomationEventListener()
+    );
+
     const goals = await sdm.createGoals(FluxGoalCreator, [FluxGoalConfigurer]);
     return {
         fluxAndroidApp: {
@@ -84,7 +174,7 @@ export const configuration = configure<FluxGoals>(async sdm => {
             ],
             goals: [
                 [goals.msgAuthor, goals.siteBuild],
-                [goals.siteGenPreviewPng, goals.sitePushS3],
+                [goals.siteGenPreviewPng, goals.sitePushS3, goals.sitePushS3Indexes],
                 goals.siteDeployPreviewCloudFront,
             ],
         },

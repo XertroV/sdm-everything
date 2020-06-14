@@ -16,7 +16,7 @@
 
 import {GoalCreator} from "@atomist/sdm-core/lib/machine/configure";
 import {Build} from "@atomist/sdm-pack-build";
-import {buildWebsiteBuilder, makeCloudFrontDistribution, thankAuthorInChannelGoal} from "../machine";
+import {buildWebsiteBuilder, makeCloudFrontDistribution} from "../machine";
 import {snooze} from "../util";
 import {FluxGoals, fluxSitePreviewBucket, mkAppUploadFilename} from "./goals";
 import {goal, GoalWithFulfillment} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
@@ -148,6 +148,19 @@ const publishSitePreview = new PublishToS3({
 });
 
 
+const publishSitePreviewIndexes = new PublishToS3({
+    displayName: "Publish to S3 (indexes shim)",
+    uniqueName: "publish-preview-indexes-to-s3",
+    bucketName: fluxSitePreviewBucket,
+    region: "ap-southeast-2", // use your region
+    filesToPublish: ["_site/**/index.html"],
+    pathTranslation: (filepath: string, gi: GoalInvocation) =>
+        filepath
+            .replace('index.html', '')
+            .replace(/^_site/, `${gi.goalEvent.sha.slice(0, 7)}`),
+    pathToIndex: "_site/index.html", // index file in your project
+});
+
 /**
  * Create all goal instances and return an instance of FluxGoals
  */
@@ -164,6 +177,7 @@ export const FluxGoalCreator: GoalCreator<FluxGoals> = async sdm => {
 
     return {
         nop: nopGoal,
+        /* app goals */
         appFlutterInfo,
         appAndroidBuild,
         appAndroidSign,
@@ -178,10 +192,12 @@ export const FluxGoalCreator: GoalCreator<FluxGoals> = async sdm => {
         appIosTest: nopGoal,
         appLint: nopGoal,
         appSetup: nopGoal,
+        /* website goals */
         siteBuild: buildWebsite,
         siteGenPreviewPng: nopGoalF(2000, "Generate Preview Screenshot Placeholder"),
         sitePushS3: publishSitePreview,
+        sitePushS3Indexes: publishSitePreviewIndexes,
         siteDeployPreviewCloudFront: makeCloudFrontDistribution,
-        msgAuthor: thankAuthorInChannelGoal,
+        // msgAuthor: thankAuthorInChannelGoal,
     };
 };
