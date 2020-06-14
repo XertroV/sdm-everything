@@ -9,6 +9,16 @@
 [![npm version](https://img.shields.io/npm/v/@atomist-seeds/empty-sdm.svg)](https://www.npmjs.com/package/@atomist-seeds/empty-sdm)
 -->
 
+Dependencies & quick start:
+
+```bash
+npm i atomist-sdm-* 
+npm i
+npm run start
+```
+
+> Note: it should crash at this point unless one of the [SDM configuration tests](https://github.com/XertroV/sdm-everything/blob/master/index.ts#L49) returned true.  
+
 Setup:
 
 * AWS creds and `AWS_SDK_LOAD_CONFIG=1`

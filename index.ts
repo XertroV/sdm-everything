@@ -46,6 +46,12 @@ process.env.AWS_DEFAULT_REGION = "ap-southeast-2";
 process.env.AWS_PROFILE = "flux";
 
 
+/* Which SDM to start? Keep declarations in order of priority till refactored. */
+
+const isIosSdm = process.env.SDM_FLUX_APP_IOS === "true" && process.platform === "darwin";
+const isAndroidSdm = process.env.SDM_FLUX_APP_ANDROID === "true";
+const isAwsSdm = !!process.env.AWS_PROFILE;
+
 
 export class TestAutomationEventListener implements AutomationEventListener {
 
@@ -112,10 +118,6 @@ export class TestAutomationEventListener implements AutomationEventListener {
         return Promise.resolve();
     }
 }
-
-const isIosSdm = process.env.SDM_FLUX_APP_IOS === "true" && process.platform === "darwin";
-const isAndroidSdm = process.env.SDM_FLUX_APP_ANDROID === "true";
-const isAwsSdm = !!process.env.AWS_PROFILE;
 
 const configurer: Configurer<FluxGoals> = async (sdm): Promise<Record<string, GoalStructure>> => {
     const goals = await sdm.createGoals(FluxGoalCreator, [FluxGoalConfigurer]);
