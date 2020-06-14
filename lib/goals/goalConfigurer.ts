@@ -62,13 +62,13 @@ const flutterAndroidUploadDebugGithubPRComment: GoalExecutionListener = async (g
         return;
     }
     const fname = mkAppUploadFilename(gi.goalEvent, 'apk');
-    const body = `### Build outputs for ${gi.id.sha};
+    const body = `### Build outputs for ${gi.id.sha}
 
-* S3 Link: <http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/${fname}>
-* S3 Link: <http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/fluxApp-latest-build.apk>
+* Debug APK: <http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/${fname}>
+<!-- * S3 Link: <http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/fluxApp-latest-build.apk> -->
 
 :tada:`;
-    await gi.addressChannels(`Build output for ${gi.id.sha?.slice(0, 7)}: http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/${fname}`);
+    await gi.addressChannels(`Flux App Debug Build for ${gi.id.sha?.slice(0, 7)}: http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/${fname}`);
     const gh = await getGitHubApi(gi);
     await addCommentToRelevantPR(gi, gh, body);
 };

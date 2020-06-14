@@ -15,7 +15,7 @@
  */
 import {CompressingGoalCache} from "@atomist/sdm-core/lib/goal/cache/CompressingGoalCache";
 import {isInLocalMode} from "@atomist/sdm-core/lib/internal/machine/modes";
-import {configure} from "@atomist/sdm-core/lib/machine/configure";
+import {configure, ConfigureMachineOptions, Configurer, GoalStructure} from "@atomist/sdm-core/lib/machine/configure";
 import { AutomationEventListener } from "@atomist/automation-client/lib/server/AutomationEventListener";
 
 import * as os from "os";
@@ -26,8 +26,8 @@ import {FluxGoalCreator} from "./lib/goals/goalCreator";
 import {FluxGoals} from "./lib/goals/goals";
 import {isFluxSiteRepo, shouldRebuildSite} from "./lib/machine";
 import {logger} from "@atomist/automation-client/lib/util/logger";
-import {githubGoalStatusSupport} from "@atomist/sdm-core";
-import { githubLifecycleSupport } from "@atomist/sdm-pack-lifecycle-github";
+// import {githubGoalStatusSupport} from "@atomist/sdm-core";
+// import { githubLifecycleSupport } from "@atomist/sdm-pack-lifecycle-github";
 import {isFlutterProject} from "./lib/goals/app/pushTests";
 import {
     CommandIncoming, EventIncoming,
@@ -113,13 +113,13 @@ export class TestAutomationEventListener implements AutomationEventListener {
     }
 }
 
+const isIosSdm = process.env.SDM_FLUX_APP_IOS === "true" && process.platform === "darwin";
+const isAndroidSdm = process.env.SDM_FLUX_APP_ANDROID === "true";
+const isAwsSdm = !!process.env.AWS_PROFILE;
 
+const configurer: Configurer<FluxGoals> = async (sdm): Promise<Record<string, GoalStructure>> => {
+    const goals = await sdm.createGoals(FluxGoalCreator, [FluxGoalConfigurer]);
 
-
-/**
- * The main entry point into the SDM
- */
-export const configuration = configure<FluxGoals>(async sdm => {
     if (isInLocalMode()) {
         logger.warn(`Config: ${JSON.stringify(sdm.configuration)}`);
         process.env.GITHUB_TOKEN = sdm.configuration.sdmLocal.github.token;
@@ -133,8 +133,8 @@ export const configuration = configure<FluxGoals>(async sdm => {
     };
 
     sdm.addExtensionPacks(
-        githubLifecycleSupport(),
-        githubGoalStatusSupport(),
+        // githubLifecycleSupport(),
+        // githubGoalStatusSupport(),
     );
 
     // Use the sdm instance to configure commands etc
@@ -154,29 +154,80 @@ export const configuration = configure<FluxGoals>(async sdm => {
         new TestAutomationEventListener()
     );
 
-    const goals = await sdm.createGoals(FluxGoalCreator, [FluxGoalConfigurer]);
-    return {
-        fluxAndroidApp: {
-            test: [
-                isFlutterProject
-            ],
-            goals: [
-                goals.appFlutterInfo,
-                goals.appAndroidBuild,
-                [goals.appAndroidUploadDebug, goals.appAndroidTest],
-                // goals.appAndroidSign,
-            ]
-        },
-        fluxSite: {
-            test: [
-                isFluxSiteRepo,
-                shouldRebuildSite,
-            ],
-            goals: [
-                [goals.msgAuthor, goals.siteBuild],
-                [goals.siteGenPreviewPng, goals.sitePushS3, goals.sitePushS3Indexes],
-                goals.siteDeployPreviewCloudFront,
-            ],
-        },
+    if (isIosSdm) {
+        return {
+            fluxAppIos: {
+                test: [isFlutterProject],
+                goals: [
+                    goals.appFlutterInfo,
+                    goals.appIosBuild,
+                    [goals.appIosDebugUpload, goals.appIosTest],
+                ]
+            },
+        }
+    }
+
+    if (isAndroidSdm) {
+        return {
+            fluxAppAndroid: {
+                test: [
+                    isFlutterProject
+                ],
+                goals: [
+                    goals.appFlutterInfo,
+                    goals.appAndroidBuild,
+                    [goals.appAndroidUploadDebug, goals.appAndroidTest],
+                    // goals.appAndroidSign,
+                ]
+            },
+        }
+    }
+
+    if (isAwsSdm) {
+        return {
+            fluxSite: {
+                test: [
+                    isFluxSiteRepo,
+                    shouldRebuildSite,
+                ],
+                goals: [
+                    [goals.msgAuthor, goals.siteBuild],
+                    [goals.siteGenPreviewPng, goals.sitePushS3, goals.sitePushS3Indexes],
+                    goals.siteDeployPreviewCloudFront,
+                ],
+            },
+        }
+    }
+
+    throw Error("Setup must match one of the provided SDM configurations. See index.ts for more.");
+}
+
+const mkConfiguration = () => {
+    // note: must be in same order as configurations returned in configurer above
+    const name = isIosSdm ? "sdm-flux-ios-build"
+        : isAndroidSdm ?
+            "sdm-flux-android-build"
+            : (isAwsSdm) ?
+                "sdm-flux-aws"
+                : (() => { throw Error('No SDM configuration selected.'); })();
+
+    const options: ConfigureMachineOptions = {
+        preProcessors: [
+            async (opts) => {
+                console.warn(`Current name: ${opts.name}, new: ${name}`);
+                opts.name = name;
+                return opts;
+            }
+        ],
+        // name,
     };
-});
+
+    return configure<FluxGoals>(configurer, options);
+}
+
+
+
+/**
+ * The main entry point into the SDM
+ */
+export const configuration = mkConfiguration();
