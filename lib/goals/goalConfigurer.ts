@@ -17,7 +17,7 @@
 import {GoalConfigurer} from "@atomist/sdm-core/lib/machine/configure";
 import {GitHubChecksListener} from "../listeners/GithubChecks";
 import {fluxAppPreviewBucket, FluxGoals, mkAppUploadFilename} from "./goals";
-import {NpmNodeModulesCachePut, NpmNodeModulesCacheRestore} from "@atomist/sdm-pack-node/lib/listener/npm";
+// import {NpmNodeModulesCachePut, NpmNodeModulesCacheRestore} from "@atomist/sdm-pack-node/lib/listener/npm";
 import {isFlutterProject} from "./app/pushTests";
 import {batchSpawn} from "../util/spawn";
 import {mkCacheFuncs} from "../utils/cache";
@@ -57,6 +57,8 @@ const flutterDebugIpaCache = mkCacheFuncs("flutter-build-ipa-debug", {
 }, "ios/build/");
 
 
+
+
 const flutterAndroidUploadDebugGithubPRComment: GoalExecutionListener = async (gi): Promise<void> => {
     if (gi.goalEvent.state !== "success") {
         return;
@@ -79,9 +81,33 @@ const flutterAndroidUploadDebugGithubPRComment: GoalExecutionListener = async (g
  */
 
 /**
- * Cache funcs for jekyll builds
+ * Cache funcs for jekyll build outputs (i.e. _site)
  */
 const jekyllCache = mkCacheFuncs("_site");
+const elmStuffCache = mkCacheFuncs("elm-stuff");
+const npmCache = mkCacheFuncs("node_modules");
+
+
+const DeployPreviewPRComment: GoalExecutionListener = async (gi): Promise<void> => {
+    if (gi.goalEvent.state !== "success") {
+        return;
+    }
+
+    const shaStub = gi.id.sha?.slice(0, 7);
+    const renderedMdUrls = gi.result?.externalUrls?.map(eu => `* ${eu.label || ""} <${eu.url}>`);
+    const renderedSlackUrls = gi.result?.externalUrls?.map(eu => `* <${eu.url}|${eu.label || ""}>`);
+
+    const body = `### Deploy Preview for branch ${gi.goalEvent.branch}
+    
+#### Commit: ${shaStub}
+
+${renderedMdUrls}
+
+:tada:`;
+    await gi.addressChannels(`Deploy Preview for branch ${gi.goalEvent.branch}, commit: ${shaStub}:\n\n${renderedSlackUrls}`);
+    const gh = await getGitHubApi(gi);
+    await addCommentToRelevantPR(gi, gh, body);
+};
 
 
 /**
@@ -129,14 +155,22 @@ export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) 
 
     siteBuild
         .withExecutionListener(GitHubChecksListener)
-        .withProjectListener(NpmNodeModulesCacheRestore)
-        .withProjectListener(NpmNodeModulesCachePut)
+        .withExecutionListener(DeployPreviewPRComment)
+        .withProjectListener(npmCache.put)
+        .withProjectListener(npmCache.restore)
+        .withProjectListener(elmStuffCache.put)
+        .withProjectListener(elmStuffCache.restore)
         .withProjectListener(jekyllCache.put);
 
-    sitePushS3.withExecutionListener(GitHubChecksListener)
+    sitePushS3
+        .withExecutionListener(GitHubChecksListener)
         .withProjectListener(jekyllCache.restore);
-    goals.sitePushS3Indexes.withExecutionListener(GitHubChecksListener)
-        .withProjectListener(jekyllCache.restore);
+    // goals.sitePushS3Indexes
+    //     // .withExecutionListener(GitHubChecksListener)
+    //     .withProjectListener(jekyllCache.restore);
+    // goals.sitePushS3Indexes2
+    //     // .withExecutionListener(GitHubChecksListener)
+    //     .withProjectListener(jekyllCache.restore);
 
     siteGenPreviewPng.withExecutionListener(GitHubChecksListener);
     siteDeployPreviewCloudFront.withExecutionListener(GitHubChecksListener);

@@ -24,7 +24,7 @@ interface GhCheckStatusOpts {
 }
 
 export const setGhCheckStatus =
-    async ({name, gi, status, conclusion, startTS, endTS, output}: GhCheckStatusOpts) => {
+    async ({name, gi, status, conclusion, startTS, endTS, output, ...remainder}: GhCheckStatusOpts) => {
         const gh = await getGitHubApi(gi);
 
         if (isInLocalMode()) {
@@ -36,10 +36,11 @@ export const setGhCheckStatus =
         const extraParamsAtEnd = status === "completed" ? {
             completed_at: endTS?.toISOString(),
             conclusion,
-            // ...(!!output ? {output} : {}),  // ahh, hacks. because ofc 'a' is in {a: undefined} but not in {}, even tho obj.a === undefined for both.
+            ...(!!output ? {output} : {}),  // ahh, hacks. because ofc 'a' is in {a: undefined} but not in {}, even tho obj.a === undefined for both.
         } : {};
 
         return gh.checks.create({
+            ...remainder,
             head_sha: gi.goalEvent.sha,
             name,
             repo: gi.goalEvent.repo.name,
@@ -63,19 +64,22 @@ export const GitHubChecksListener: GoalExecutionListener = async (geli: GoalExec
         status: CheckStatsPs["status"],
         conclusion?: CheckStatsPs["conclusion"],
         output?: CheckStatsPs["output"],
-    };
+    } & Partial<Octokit.ChecksUpdateParams>;
     if (geli.goalEvent.state === SdmGoalState.in_process) {
         out = {
             status: "in_progress",
+
         };
     } else {
         const conclusion = geli.result?.code !== 0 ? "failure" : "success";
         const errorObjMessage = !!geli.error ? `Error: ${geli.error?.name}: ${geli.error?.message}` : undefined;
+        const detailsUrlSpread = geli.result?.externalUrls ? { details_url: geli.result?.externalUrls[0].url } : {};
         out = {
             status: "completed",
             conclusion,
             output: mkGithubCheckOutput(`${geli.goal.name}`, `Completed ${geli.goal.name}: ${conclusion}`,
                 geli.goalEvent.error || geli.result?.message || errorObjMessage),
+            ...detailsUrlSpread,
         };
     }
 

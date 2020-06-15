@@ -18,12 +18,24 @@ import {DeliveryGoals} from "@atomist/sdm-core/lib/machine/configure";
 import {Build} from "@atomist/sdm-pack-build";
 import {GoalWithFulfillment} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
 import {SdmGoalEvent} from "@atomist/sdm";
+import {GoalInvocation} from "@atomist/sdm/lib/api/goal/GoalInvocation";
+import {safeBranchDns} from "../util/github";
 
 type DeliveryGoal = GoalWithFulfillment;
 
 
-export const fluxAppPreviewBucket = "preview.flx.dev";
-export const fluxSitePreviewBucket = "preview.flx.dev";
+export const fluxSitePreviewBucket = "sdm-edgelambda-test4-public";
+export const fluxSitePreviewBucketRegion = "us-east-1";
+// export const fluxAppPreviewBucketRegion = "ap-southeast-2";
+// export const fluxAppPreviewBucket = "sdm-edgelambda-test4-public";
+export const fluxAppPreviewBucket = fluxSitePreviewBucket;
+export const fluxAppPreviewBucketRegion = fluxSitePreviewBucket;
+export const fluxPreviewDomain = "preview.flx.dev";
+
+export function getPreviewStub(gi: GoalInvocation) {
+    return safeBranchDns(gi.goalEvent.branch);
+    // return gi.goalEvent.sha.slice(0, 7);
+}
 
 export const mkAppUploadFilename = (ge: SdmGoalEvent, ext: string): string =>
     `fluxApp-${ge.sha.slice(0, 7)}.${ext}`
@@ -53,8 +65,10 @@ export interface FluxGoals extends DeliveryGoals {
     siteBuild: Build;
     siteGenPreviewPng: DeliveryGoal;
     sitePushS3: GoalWithFulfillment;
-    sitePushS3Indexes: GoalWithFulfillment;
+    // sitePushS3Indexes: GoalWithFulfillment;
+    // sitePushS3Indexes2: GoalWithFulfillment;
     siteDeployPreviewCloudFront: GoalWithFulfillment;
+    siteDeployPreviewSetupCloudfront: GoalWithFulfillment;
 
     /** More general goals */
     // msgAuthor: GoalWithFulfillment;

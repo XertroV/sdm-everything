@@ -39,18 +39,17 @@ import {CommandInvocation} from "@atomist/automation-client/lib/internal/invoker
 import {HandlerResult} from "@atomist/automation-client/lib/HandlerResult";
 import {EventFired} from "@atomist/automation-client/lib/HandleEvent";
 import {Destination, MessageOptions} from "@atomist/automation-client/lib/spi/message/MessageClient";
-import _ from "lodash";
 
 process.env.AWS_SDK_LOAD_CONFIG = "1";
 process.env.AWS_DEFAULT_REGION = "ap-southeast-2";
-process.env.AWS_PROFILE = "flux";
+process.env.AWS_PROFILE = process.env.AWS_PROFILE || "sdm-flux-s3";
 
 
 /* Which SDM to start? Keep declarations in order of priority till refactored. */
 
 const isIosSdm = process.env.SDM_FLUX_APP_IOS === "true" && process.platform === "darwin";
 const isAndroidSdm = process.env.SDM_FLUX_APP_ANDROID === "true";
-const isAwsSdm = !!process.env.AWS_PROFILE;
+const isAwsSdm = process.env.SDM_FLUX_CHOICE === "aws";
 
 
 export class TestAutomationEventListener implements AutomationEventListener {
@@ -114,7 +113,7 @@ export class TestAutomationEventListener implements AutomationEventListener {
                        destinations: Destination | Destination[],
                        options: MessageOptions,
                        ctx: HandlerContext): Promise<void> {
-        logger.warn(`Sent slack message: ${_.keys(message)}...`);
+        // logger.warn(`Sent slack message: ${_.keys(message)}...`);
         return Promise.resolve();
     }
 }
@@ -194,8 +193,8 @@ const configurer: Configurer<FluxGoals> = async (sdm): Promise<Record<string, Go
                 ],
                 goals: [
                     [goals.msgAuthor, goals.siteBuild],
-                    [goals.siteGenPreviewPng, goals.sitePushS3, goals.sitePushS3Indexes],
-                    goals.siteDeployPreviewCloudFront,
+                    [goals.siteGenPreviewPng, goals.sitePushS3, goals.sitePushS3Indexes, goals.sitePushS3Indexes2],
+                    // goals.siteDeployPreviewCloudFront,
                 ],
             },
         }
@@ -218,6 +217,7 @@ const mkConfiguration = () => {
             async (opts) => {
                 console.warn(`Current name: ${opts.name}, new: ${name}`);
                 opts.name = name;
+                opts.version = `${opts.version}-${Date.now().toString()}`;
                 return opts;
             }
         ],

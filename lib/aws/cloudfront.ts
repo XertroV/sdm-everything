@@ -7,6 +7,15 @@ const logger = namedLogger("cloudfront");
 // replay protection
 const mkCallerRef = () => `${Date.now()}`;
 
+
+// export const cfDistributionExists = async (shaFrag: string): Promise<AWS.CloudFront.GetDistributionResult> => {
+//     const originId = opts?.originId || `S3-preview-website-origin-${shaFrag}`;
+//     const cf = new AWS.CloudFront();
+//
+//     cf.listDistributions()
+// }
+
+
 export const cfCreateDistribution = async (shaFrag: string, opts?: {originId?: string, Enabled?: boolean}): Promise<AWS.CloudFront.CreateDistributionResult> => {
     const originId = opts?.originId || `S3-preview-website-origin-${shaFrag}`;
     const cf = new AWS.CloudFront();
@@ -25,54 +34,52 @@ export const cfCreateDistribution = async (shaFrag: string, opts?: {originId?: s
         MinimumProtocolVersion: "TLSv1.2_2018",
     };
 
-    const distrib = await cf.createDistribution({
-        DistributionConfig: {
-            Aliases: {
-                Quantity: 1,
-                Items: [`${shaFrag}.preview.flx.dev`],
-            },
-            CallerReference: mkCallerRef(),
-            Comment: `S3-flux-website-preview-${shaFrag}`,
-            DefaultCacheBehavior: {
-                ForwardedValues: {
-                    QueryString: false,
-                    Cookies: {Forward: "none"},
+    return await cf.createDistribution({
+            DistributionConfig: {
+                Aliases: {
+                    Quantity: 1,
+                    Items: [`${shaFrag}.preview.flx.dev`],
                 },
-                TargetOriginId: originId,
-                TrustedSigners: {
-                    Enabled: false,
-                    Quantity: 0,
+                CallerReference: mkCallerRef(),
+                Comment: `S3-flux-website-preview-${shaFrag}`,
+                DefaultCacheBehavior: {
+                    ForwardedValues: {
+                        QueryString: false,
+                        Cookies: {Forward: "none"},
+                    },
+                    TargetOriginId: originId,
+                    TrustedSigners: {
+                        Enabled: false,
+                        Quantity: 0,
+                    },
+                    ViewerProtocolPolicy: "redirect-to-https",
+                    MinTTL: 600,
                 },
-                ViewerProtocolPolicy: "redirect-to-https",
-                MinTTL: 600,
+                DefaultRootObject: "index.html",
+                Origins: {
+                    Quantity: 1,
+                    Items: [
+                        {
+                            OriginPath: `/${shaFrag}`,
+                            DomainName: `preview.flx.dev.s3.amazonaws.com`,
+                            Id: originId,
+                            S3OriginConfig: {
+                                OriginAccessIdentity: "",
+                            }, // as AWS.CloudFront.S3OriginConfig
+                        }, // as AWS.CloudFront.Origin
+                    ],
+                },
+                Enabled: get(opts, "Enabled", true),
+                ViewerCertificate: viewerCert,
+                /*{
+                    ACMCertificateArn: certArn,
+                    SSLSupportMethod: "sni-only",
+                    MinimumProtocolVersion: "TLSv1.2_2018",
+                },*/
             },
-            DefaultRootObject: "index.html",
-            Origins: {
-                Quantity: 1,
-                Items: [
-                    {
-                        OriginPath: `/${shaFrag}`,
-                        DomainName: `preview.flx.dev.s3.amazonaws.com`,
-                        Id: originId,
-                        S3OriginConfig: {
-                            OriginAccessIdentity: "",
-                        }, // as AWS.CloudFront.S3OriginConfig
-                    }, // as AWS.CloudFront.Origin
-                ],
-            },
-            Enabled: get(opts, "Enabled", true),
-            ViewerCertificate: viewerCert,
-            /*{
-                ACMCertificateArn: certArn,
-                SSLSupportMethod: "sni-only",
-                MinimumProtocolVersion: "TLSv1.2_2018",
-            },*/
-        },
-    }, // as AWS.CloudFront.CreateDistributionRequest
-    // , (err, val) => {});
+        }, // as AWS.CloudFront.CreateDistributionRequest
+        // , (err, val) => {});
     ).promise();
-
-    return distrib;
 };
 
 export const cfDeleteDistribution = async (Id: string, eTagForIfMatch: string) => {
@@ -87,6 +94,5 @@ export const cfDeleteDistribution = async (Id: string, eTagForIfMatch: string) =
     //     return disRes;
     // }
 
-    const delRes = await cf.deleteDistribution({Id, IfMatch: eTagForIfMatch}).promise();
-    return delRes;
+    return await cf.deleteDistribution({Id, IfMatch: eTagForIfMatch}).promise();
 };

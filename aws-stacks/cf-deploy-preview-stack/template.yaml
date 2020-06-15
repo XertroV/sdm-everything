@@ -1,0 +1,190 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  cf-deploy-preview-rewriter
+
+Parameters:
+  PreviewBucketName:
+    Type: String
+    Description: "REQUIRED: Unique S3 bucket name to use for the app."
+  Nonce:
+    Type: String
+    Description: "Nonce, should be updated each deploy"
+    Default: '0'
+
+  pHostedZoneName:
+    Type: String
+  pPreviewRecordSetDomain:
+    Type: String
+  pCertArn:
+    Type: String
+
+Resources:
+  IndexLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: nodejs12.x
+      MemorySize: 128
+      Timeout: 5
+      Role: !GetAtt IndexLambdaRole.Arn
+      FunctionName: !Sub "${AWS::StackName}-lambda-s3-rewrite"
+      Handler: index.handler
+      Code:
+        ZipFile: |
+          exports.handler = (event, ctx, cb) => {
+            console.warn(JSON.stringify(event));
+            const request = event.Records[0].cf.request;
+            const dpPrefix = /(^[a-z0-9-]*)\./;
+            const hostname = request.headers.host[0].value;
+
+            if (dpPrefix.test(hostname)) {
+              const origPath = request.uri;
+              const newPathPrefix = hostname.match(dpPrefix)[1];
+              request.uri = `/${newPathPrefix}/${origPath.replace(/^\//, "")}`;
+              console.warn(`updated :: request.uri: ${JSON.stringify(request.uri)} (originalPath: ${origPath}), (hostname: ${hostname})`);
+            } else {
+              console.warn(`no-match :: uri: ${JSON.stringify(request.uri)}, request.origin: ${JSON.stringify(request.origin)}, (hostname: ${hostname})`);
+              console.warn(`no-match :: event: ${JSON.stringify(event)}`);
+            }
+
+            cb(null, request);
+          }
+
+  IndexLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - edgelambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  PreviewBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref PreviewBucketName
+      AccessControl: "PublicRead"
+
+  PreviewBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "arn:aws:s3:::${PreviewBucket}/*"
+      Bucket: !Ref PreviewBucket
+
+  rCnameForDistribution:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      HostedZoneName: !Ref pHostedZoneName
+      RecordSets:
+        - Name: !Ref pPreviewRecordSetDomain
+          Type: A
+          AliasTarget:
+            HostedZoneId: Z2FDTNDATAQYW2
+            DNSName: !GetAtt Distribution.DomainName
+
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: 'index.html'
+        Aliases:
+          - '*.preview.flx.dev'
+        Origins:
+          - Id: !Ref PreviewBucket
+            DomainName: !GetAtt PreviewBucket.DomainName
+            S3OriginConfig: {}
+        ViewerCertificate:
+          AcmCertificateArn: !Ref pCertArn
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2018
+        DefaultCacheBehavior:
+          TargetOriginId: !Ref PreviewBucket
+          ForwardedValues:
+            QueryString: false
+          ViewerProtocolPolicy: redirect-to-https
+          LambdaFunctionAssociations:
+            - EventType: viewer-request
+              LambdaFunctionARN: !GetAtt IndexLambdaVersion.FunctionArn
+#              LambdaFunctionARN: !GetAtt IndexLambda.Arn
+
+  IndexLambdaVersion:
+    Type: Custom::LatestLambdaEdgeVersion
+    Properties:
+      ServiceToken: !GetAtt PublishLambdaVersion.Arn
+      FunctionName: !Ref IndexLambda
+      Nonce: !Ref Nonce
+
+  # Custom resource for getting latest version of a lambda,
+  # as required by CloudFront.
+
+  PublishLambdaVersion:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: nodejs12.x
+      MemorySize: 128
+      Timeout: 60
+      Role: !GetAtt PublishLambdaVersionRole.Arn
+      FunctionName: !Sub "${AWS::StackName}-lambda-ver-cr"
+      Handler: index.handler
+      Code:
+        ZipFile: |
+          const {Lambda} = require('aws-sdk');
+          const {send, SUCCESS, FAILED} = require('cfn-response');
+          const lambda = new Lambda();
+          exports.handler = (event, context) => {
+            try {
+              const {RequestType, ResourceProperties: {FunctionName}} = event
+              if (RequestType === 'Delete') return send(event, context, SUCCESS)
+              lambda.publishVersion({FunctionName}, (err, {FunctionArn}) => {
+                  err
+                      ? send(event, context, FAILED, err)
+                      : send(event, context, SUCCESS, {FunctionArn})
+              })
+            } catch (e) {
+              console.error(e);
+              return {}
+            }
+          }
+
+  PublishLambdaVersionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: PublishVersion
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:PublishVersion
+                Resource: '*'
+
+Outputs:
+  lambdaEdgeArn:
+    Value:  !GetAtt IndexLambda.Arn
+  lambdaEdgeVersionArn:
+    Value:  !GetAtt IndexLambdaVersion.FunctionArn
+  distribution:
+    Value: !GetAtt Distribution.DomainName

@@ -172,7 +172,7 @@ export const buildWebsiteOld = goal(
 }); */
 
 // @ts-ignore
-const toSpawnCommand = (c: string | SpawnCommand, i, a): SpawnCommand => typeof c === "string" ? asSpawnCommand(c) : c;
+const toSpawnCommand = (c: string | SpawnCommand): SpawnCommand => typeof c === "string" ? asSpawnCommand(c) : c;
 
 export const buildWebsiteBuilder = spawnBuilder({
     name: "jekyll builder",
@@ -180,7 +180,7 @@ export const buildWebsiteBuilder = spawnBuilder({
     projectToAppInfo: mkAppInfo,
     commands: [
         "docker build -f ./_docker-dev/Dockerfile -t flux-website-docker-dev:latest .",
-        mkBashCommand("docker run --rm --mount type=volume,src=flux-site-vol-node,dst=/src/node_modules --mount type=volume,src=flux-site-vol-bundle-gems,dst=/src/.bundle-gems --mount type=volume,src=flux-site-vol-bundle,dst=/src/.bundle --mount type=bind,src=$PWD,dst=/src --env NODE_ENV=production flux-website-docker-dev:latest bash  -c \"npm run --silent build || (npm ci && npm run build)\""),
+        mkBashCommand("docker run --rm --mount type=volume,src=flux-site-vol-node,dst=/src/node_modules --mount type=volume,src=flux-site-vol-bundle-gems,dst=/src/.bundle-gems --mount type=volume,src=flux-site-vol-bundle,dst=/src/.bundle --mount type=bind,src=$PWD,dst=/src --env NODE_ENV=production flux-website-docker-dev:latest bash -c \"npm run --silent build || (npm i && npm run build)\""),
     ].map(toSpawnCommand)
 });
 
@@ -195,6 +195,8 @@ export const makeCloudFrontDistribution = goal(
             return { code: 0 };
         }
 
+        // if (cfDistributionExists(shaFrag)) {
+        // }
         const distrib = await cfCreateDistribution(shaFrag);
 
         // do this for the moment (always use cloudfront domain) to avoid needing to do R53 stuff

@@ -18,7 +18,14 @@ import {GoalCreator} from "@atomist/sdm-core/lib/machine/configure";
 import {Build} from "@atomist/sdm-pack-build";
 import {buildWebsiteBuilder, makeCloudFrontDistribution} from "../machine";
 import {snooze} from "../util";
-import {FluxGoals, fluxSitePreviewBucket, mkAppUploadFilename} from "./goals";
+import {
+    FluxGoals,
+    fluxSitePreviewBucketRegion,
+    fluxPreviewDomain,
+    fluxSitePreviewBucket,
+    getPreviewStub,
+    mkAppUploadFilename
+} from "./goals";
 import {goal, GoalWithFulfillment} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
 import {logger} from "@atomist/automation-client/lib/util/logger";
 import {batchSpawn} from "../util/spawn";
@@ -26,6 +33,7 @@ import {and} from "@atomist/sdm/lib/api/mapping/support/pushTestUtils";
 import {doWithProject, pushTest as mkPushTest, PushTest, spawnLog, SpawnLogOptions} from "@atomist/sdm";
 import {PublishToS3} from "@atomist/sdm-pack-s3";
 import {GoalInvocation} from "@atomist/sdm/lib/api/goal/GoalInvocation";
+import {PublishToS3IndexShimsAndUrlCustomizer} from "../aws/s3";
 
 
 /**
@@ -111,8 +119,8 @@ const appAndroidSign: GoalWithFulfillment = appGoalF("Flutter-Android-Sign", [
 const appAndroidUploadDebug = new PublishToS3({
     displayName: "Flutter-Android-Debug-Upload",
     uniqueName: "flutter-android-debug-upload-s3",
-    bucketName: "preview.flx.dev",
-    region: "ap-southeast-2", // use your region
+    bucketName: fluxSitePreviewBucket,
+    region: fluxSitePreviewBucketRegion, // use your region
     filesToPublish: ["build/app/outputs/apk/debug/app-debug.apk", "build/app/outputs/apk/debug/fluxApp-latest-build.apk"], // , "build/app/outputs/apk/debug/app-debug.aab"],
     pathTranslation: (filepath: string, gi: GoalInvocation) => {
         return filepath
@@ -136,30 +144,44 @@ const buildWebsite = new Build({ displayName: "Jekyll Build" }).with({
 });
 
 
-const publishSitePreview = new PublishToS3({
+const publishSitePreview = new PublishToS3IndexShimsAndUrlCustomizer({
     displayName: "Publish to S3",
     uniqueName: "publish-preview-to-s3",
     bucketName: fluxSitePreviewBucket,
-    region: "ap-southeast-2", // use your region
+    region: fluxSitePreviewBucketRegion, // use your region
     filesToPublish: ["_site/**/*"],
-    pathTranslation: (filepath: string, gi: GoalInvocation) => filepath.replace(/^_site/, `${gi.goalEvent.sha.slice(0, 7)}`),
+    pathTranslation: (filepath: string, gi: GoalInvocation) => filepath.replace(/^_site/, `${getPreviewStub(gi)}`),
     pathToIndex: "_site/index.html", // index file in your project
-    linkLabel: "S3 Link",
+    linkLabel: "S3OutputLink",
+    urlCustomizer: async (eus, gi) => !eus ? eus : eus.map(({label, url}) =>
+            (!!label && label === "S3OutputLink") ? {label: "Deployment Preview", url: `https://${gi.goalEvent.branch}.${fluxPreviewDomain}/`} : {url})
 });
 
-
-const publishSitePreviewIndexes = new PublishToS3({
-    displayName: "Publish to S3 (indexes shim)",
-    uniqueName: "publish-preview-indexes-to-s3",
-    bucketName: fluxSitePreviewBucket,
-    region: "ap-southeast-2", // use your region
-    filesToPublish: ["_site/**/index.html"],
-    pathTranslation: (filepath: string, gi: GoalInvocation) =>
-        filepath
-            .replace('index.html', '')
-            .replace(/^_site/, `${gi.goalEvent.sha.slice(0, 7)}`),
-    pathToIndex: "_site/index.html", // index file in your project
-});
+// const publishSitePreviewIndexes = new PublishToS3({
+//     displayName: "Publish to S3 (indexes shim)",
+//     uniqueName: "publish-preview-indexes-to-s3",
+//     bucketName: fluxSitePreviewBucket,
+//     region: fluxSitePreviewBucketRegion, // use your region
+//     filesToPublish: ["_site/**/index.html"],
+//     pathTranslation: (filepath: string, gi: GoalInvocation) =>
+//         filepath
+//             .replace('index.html', '')
+//             .replace(/^_site/, `${getPreviewStub(gi)}`),
+//     pathToIndex: "_site/index.html", // index file in your project
+// });
+//
+// const publishSitePreviewIndexes2 = new PublishToS3({
+//     displayName: "Publish to S3 (indexes2 shim)",
+//     uniqueName: "publish-preview-indexes2-to-s3",
+//     bucketName: fluxSitePreviewBucket,
+//     region: fluxSitePreviewBucketRegion, // use your region
+//     filesToPublish: ["_site/**/index.html"],
+//     pathTranslation: (filepath: string, gi: GoalInvocation) =>
+//         filepath
+//             .replace('/index.html', '')
+//             .replace(/^_site/, `${(getPreviewStub(gi))}`),
+//     pathToIndex: "_site/index.html", // index file in your project
+// });
 
 /**
  * Create all goal instances and return an instance of FluxGoals
@@ -196,8 +218,10 @@ export const FluxGoalCreator: GoalCreator<FluxGoals> = async sdm => {
         siteBuild: buildWebsite,
         siteGenPreviewPng: nopGoalF(2000, "Generate Preview Screenshot Placeholder"),
         sitePushS3: publishSitePreview,
-        sitePushS3Indexes: publishSitePreviewIndexes,
+        // sitePushS3Indexes: publishSitePreviewIndexes,
+        // sitePushS3Indexes2: publishSitePreviewIndexes2,
         siteDeployPreviewCloudFront: makeCloudFrontDistribution,
+        siteDeployPreviewSetupCloudfront: makeCloudFrontDistribution,
         // msgAuthor: thankAuthorInChannelGoal,
     };
 };

@@ -18,8 +18,6 @@ type GHCredsParams = { credentials: ProjectOperationCredentials, __goalTag: fals
 export const getGitHubApi = async (gi: GHCredsParams): Promise<Octokit> => {
     if (isInLocalMode()) {
         // @ts-ignore
-        const username = gi.configuration.sdmLocal.github.user;
-        // @ts-ignore
         const token = gi.configuration.sdmLocal.github.token;
         logger.warn(`GITHUB API CREATED IN LOCAL MODE`);
         return new Octokit({auth: token, authStrategy: createTokenAuth});
@@ -34,4 +32,13 @@ export async function addCommentToRelevantPR(gi: GoalExecutionListenerInvocation
     const ownerAndRepo = {owner: gi.id.owner, repo: gi.id.repo};
     const prs = await gh.pulls.list(ownerAndRepo).then(prs => prs.data.filter(v => v.head.sha === gi.id.sha));
     await Promise.all(prs.map(pr => gh.issues.createComment({...ownerAndRepo, body, issue_number: pr.number})));
+}
+
+
+export const safeBranchDns = (branch: string) => {
+    return branch.toLowerCase()
+        .replace("_", "-")
+        .replace("/", "--")
+        .replace(".", "-")
+        .replace(/[^a-z0-9\-]*/, "");
 }
