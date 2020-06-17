@@ -16,7 +16,7 @@
 import {CompressingGoalCache} from "@atomist/sdm-core/lib/goal/cache/CompressingGoalCache";
 import {isInLocalMode} from "@atomist/sdm-core/lib/internal/machine/modes";
 import {configure, ConfigureMachineOptions, Configurer, GoalStructure} from "@atomist/sdm-core/lib/machine/configure";
-import { AutomationEventListener } from "@atomist/automation-client/lib/server/AutomationEventListener";
+import {AutomationEventListener} from "@atomist/automation-client/lib/server/AutomationEventListener";
 
 import * as os from "os";
 import * as path from "path";
@@ -39,7 +39,7 @@ import {CommandInvocation} from "@atomist/automation-client/lib/internal/invoker
 import {HandlerResult} from "@atomist/automation-client/lib/HandlerResult";
 import {EventFired} from "@atomist/automation-client/lib/HandleEvent";
 import {Destination, MessageOptions} from "@atomist/automation-client/lib/spi/message/MessageClient";
-import _ from "lodash";
+import _ from "lodash/fp";
 import {hasMarkdown} from "./lib/goals/pushTests";
 import {pushTest} from "@atomist/sdm";
 
@@ -49,10 +49,6 @@ process.env.AWS_PROFILE = process.env.AWS_PROFILE || "sdm-flux-s3";
 
 
 /* Which SDM to start? Keep declarations in order of priority till refactored. */
-
-const isIosSdm = process.env.SDM_FLUX_APP_IOS === "true" && process.platform === "darwin";
-const isAndroidSdm = process.env.SDM_FLUX_APP_ANDROID === "true";
-const isAwsSdm = process.env.SDM_FLUX_CHOICE === "aws";
 
 
 export class TestAutomationEventListener implements AutomationEventListener {
@@ -122,7 +118,7 @@ export class TestAutomationEventListener implements AutomationEventListener {
 }
 
 const configurer: Configurer<FluxGoals> = async (sdm): Promise<Record<string, GoalStructure>> => {
-    _.set(sdm.configuration, 'sdm.rolar.bufferSize', 1024);
+    _.set('sdm.rolar.bufferSize', 1024, sdm.configuration);
     const goals = await sdm.createGoals(FluxGoalCreator, [FluxGoalConfigurer]);
 
     if (isInLocalMode()) {
@@ -159,21 +155,22 @@ const configurer: Configurer<FluxGoals> = async (sdm): Promise<Record<string, Go
         new TestAutomationEventListener()
     );
 
-    if (isIosSdm) {
-        return {
+    const verifyIos = () => verifyAws()
+    const verifyAndroid = () => !!process.env.ANDROID_SDK_ROOT && verifyAws()
+    const verifyAws = () => !!process.env.AWS_PROFILE || !!process.env.AWS_ACCESS_KEY_ID
+
+    const choices: Record<string, [Record<string, GoalStructure>, () => boolean]> = {
+        "ios": [{
             fluxAppIos: {
                 test: [isFlutterProject],
                 goals: [
                     goals.appFlutterInfo,
                     goals.appIosBuild,
-                    [goals.appIosDebugUpload, goals.appIosTest],
+                    [goals.appIosUploadDebug, goals.appIosTest],
                 ]
             },
-        }
-    }
-
-    if (isAndroidSdm) {
-        return {
+        }, verifyIos],
+        "android": [{
             fluxAppAndroid: {
                 test: [
                     isFlutterProject
@@ -181,15 +178,12 @@ const configurer: Configurer<FluxGoals> = async (sdm): Promise<Record<string, Go
                 goals: [
                     goals.appFlutterInfo,
                     goals.appAndroidBuild,
-                    [goals.appAndroidUploadDebug, goals.appAndroidTest],
+                    [goals.appAndroidTest, goals.appAndroidUploadDebug],
                     // goals.appAndroidSign,
                 ]
             },
-        }
-    }
-
-    if (isAwsSdm) {
-        return {
+        }, verifyAndroid],
+        "aws": [{
             fluxSite: {
                 test: [
                     isFluxSiteRepo,
@@ -211,21 +205,41 @@ const configurer: Configurer<FluxGoals> = async (sdm): Promise<Record<string, Go
                     goals.siteSpellcheck
                 ]
             }
-        }
+        }, verifyAws]
     }
 
-    throw Error("Setup must match one of the provided SDM configurations. See index.ts for more.");
+    const usageError = () => {
+        throw Error(`Setup must match one of the provided SDM configurations.
+
+Valid options for env var SDM_FLUX_CHOICE: ${JSON.stringify(_.keys(choices), null, 2)}
+
+See index.ts for more.`);
+    };
+
+    const processChoiceEnv = (): string[] => !process.env.SDM_FLUX_CHOICE
+        ? usageError()
+        : process.env.SDM_FLUX_CHOICE === "all"
+            ? _.keys(choices)
+            : process.env.SDM_FLUX_CHOICE.split(",");
+
+    // const cs: Record<string, Record<string, GoalStructure>> = ;
+    //_.map(_.get(0), choices);
+    const res = _.flow(
+        _.map((c: string) => choices[c]),
+        _.map(([c, pred]) => {
+            if (!pred()) {
+                throw Error(`Predicate for SDM with goals ${_.keys(c)} failed.`);
+            }
+            return c;
+        }),
+        _.reduce((acc, v) => ({...acc, ...v}), {} as Record<string, GoalStructure>)
+    )(processChoiceEnv())
+    return res;
 }
 
 const mkConfiguration = () => {
     // note: must be in same order as configurations returned in configurer above
-    const name = isIosSdm ? "sdm-flux-ios-build"
-        : isAndroidSdm ?
-            "sdm-flux-android-build"
-            : (isAwsSdm) ?
-                "sdm-flux-aws"
-                : (() => { throw Error('No SDM configuration selected.'); })();
-
+    const name = `sdm-flux-${process.env.SDM_FLUX_CHOICE}`;
     const options: ConfigureMachineOptions = {
         preProcessors: [
             async (opts) => {
@@ -240,7 +254,6 @@ const mkConfiguration = () => {
 
     return configure<FluxGoals>(configurer, options);
 }
-
 
 
 /**

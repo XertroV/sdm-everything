@@ -1,7 +1,8 @@
 import {SpawnOptions} from "child_process";
-import {spawnLog, SpawnLogResult} from "@atomist/sdm";
+import {spawnLog, SpawnLogResult, StringCapturingProgressLog} from "@atomist/sdm";
 import {jSz} from "./index";
 import {logger} from "@atomist/automation-client";
+import _ from "lodash/fp";
 
 /**
  * The first two arguments to Node spawn
@@ -42,8 +43,18 @@ type FunctionArgs<F> = F extends (...args: infer T) => any ? T : never;
 type SpawnLogArgs = FunctionArgs<typeof spawnLog>;
 
 
+const renderMessages = (cmds: string[], msgs: string[]): string => {
+    return _.flow(
+        _.zip(cmds),
+        _.map(([cmd, msg]) => `  >>running>>  ${cmd}\n\n${msg}`),
+        _.join('\n\n')
+    )(msgs);
+}
+
+
 export async function batchSpawn(spawns: SpawnLogArgs[]) {
     let lastResult = { code: -1, message: "Empty array given to batchSpawn.", cmdString: "<empty>" } as SpawnLogResult;
+    const messages = [];
     const commands = [];
     for (let i = 0; i < spawns.length; i++) {
         const next = spawns[i];
@@ -51,17 +62,24 @@ export async function batchSpawn(spawns: SpawnLogArgs[]) {
             logger.error(`Command given to batchSpawn has a space in it: ${next[0]}. This will likely fail.`)
         }
         logger.info(`///--(batch-${i}: ${next[0]} '${next[1].map(jSz).join("' '")}' )--`);
-        // await spawnLog("echo", [`///--(batch-${i}: ${next[0]} '${next[1].map(jSz).join("' '")}' )--`], next[2]);
-        lastResult = await spawnLog(...(next));
-        // await spawnLog("echo", [`\\\\\\--(batch-${i})--`], next[2]);
+        // logger.info(`   -- env vars: ${JSON.stringify(next[2].env)}`);
+        const opts = next[2];
+        const log = _.getOr(new StringCapturingProgressLog(), 'log', opts);
+        lastResult = await spawnLog(next[0], next[1], { ...opts, log});
+        lastResult.message = log.log;
+        messages.push(log.log || "<no retrievable logged output>");
+        commands.push(lastResult.cmdString);
         logger.info(`\\\\\\--(batch-${i})--`);
         if (lastResult.code !== 0) {
-            return lastResult;
+            return {
+                ...lastResult,
+                message: renderMessages(commands, messages)
+            };
         }
-        commands.push(lastResult.cmdString)
     }
     return {
         ...lastResult,
+        message: renderMessages(commands, messages),
         cmdString: commands.join("\n"),
     };
 }

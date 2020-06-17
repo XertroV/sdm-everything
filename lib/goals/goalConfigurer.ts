@@ -129,14 +129,14 @@ export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) 
     // goals.appFlutterInfo
     //     .withExecutionListener(flutterAndroidUploadDebugGithubPRComment);
 
-    const {appAndroidBuild, appIosBuild, appIosTest, appAndroidTest, appIosSign, appAndroidSign, appAndroidUploadDebug} = goals;
+    const {appAndroidBuild, appIosBuild, appIosSign, appAndroidSign, appAndroidUploadDebug} = goals;
 
     // flutter pub cache
-    [appIosBuild, appAndroidBuild, appIosTest, appAndroidTest].map(goal => {
+    /* [appIosBuild, appAndroidBuild, appIosTest, appAndroidTest].map(goal => {
         goal
             .withProjectListener(flutterPubCache.restore)
             .withProjectListener(flutterPubCache.put)
-    });
+    }); */
     appAndroidBuild
         .withProjectListener(flutterDebugApkCache.put)
     appIosBuild

@@ -57,7 +57,8 @@ type SpawnEntry = [string, string[], SpawnLogOptions] | [string, string[]];
 const flutterEnv = {
     JAVA_HOME: process.env.JAVA_HOME,
     PATH: process.env.PATH, // `${process.env.HOME}/flutter/bin:${process.env.PATH}`,
-    ANDROID_SDK_ROOT: process.env.ANDROID_SDK_PATH, // `${process.env.HOME}/Android/Sdk`,
+    ANDROID_SDK_ROOT: process.env.ANDROID_SDK_ROOT, // `${process.env.HOME}/Android/Sdk`,
+    ANDROID_HOME: process.env.ANDROID_SDK_ROOT,
 }
 
 /**
@@ -85,7 +86,7 @@ const appGoalF = (
         const opts: SpawnLogOptions = {log: pagi.progressLog, cwd: pagi.project.baseDir};
         await spawnLog("mkdir", ["-p", ".pub-cache"], opts);
         // compose the commands to run, mixing in opts.
-        return await batchSpawn(spawns.map(
+        const result = await batchSpawn(spawns.map(
             // merge in user-provided opts with the progress log, env vars, etc.
             ([cmd, args = [], otherOpts = {}]) => ([cmd, args, {
                 ...(opts),
@@ -93,6 +94,8 @@ const appGoalF = (
                 env: {...env, ...(otherOpts?.env || {}), PUB_CACHE: env.PUB_CACHE},
             }])
         ));
+        logger.info(`appGoalF returning code ${result.code} with message:\n\n${result.message}`);
+        return result;
     }), {pushTest});
 };
 
@@ -101,15 +104,19 @@ const appFlutterInfo = appGoalF("Flutter-Info", [
     ["flutter", ["doctor", "-v"]],
 ])
 const appAndroidTest = appGoalF("Flutter-Android-Test", [
-    ["env", []],
-    ["pwd", []],
-    ["ls", ["-al"]],
+    // ["env", []],
+    // ["pwd", []],
+    // ["ls", ["-al"]],
+    ["flutter", ["precache"]],
     ["flutter", ["packages", "get"]],
     ["flutter", ["test"]]
 ]);
 const appAndroidBuild: GoalWithFulfillment = appGoalF("Flutter-Android-Build", [
+    // ["env", []],
+    // ["pwd", []],
+    ["flutter", ["precache"]],
     ["flutter", ["packages", "get"]],
-    ["flutter", ["clean"]],
+    // ["flutter", ["clean"]],
     ["flutter", ["build", "apk", "--debug"]],
     ["cp", ["build/app/outputs/apk/debug/app-debug.apk", "build/app/outputs/apk/debug/fluxApp-latest-build.apk"]],
     ["ls", ["-al", "build/app/outputs/apk/debug/"]],
@@ -120,8 +127,20 @@ const appAndroidSign: GoalWithFulfillment = appGoalF("Flutter-Android-Sign", [
     ["ls", ["-al", "build/app/outputs/apk/"]],
 ]);
 
+const appIosBuild = appGoalF("Flutter-Ios-Build", [
+    ["flutter", ["precache"]],
+    ["flutter", ["packages", "get"]],
+    // ["flutter", ["clean"]],
+    ["./ci/manual-build-alt-macos.sh", []],
+])
+const appIosTest = appGoalF("Flutter-Ios-Build", [
+    ["flutter", ["precache"]],
+    ["flutter", ["packages", "get"]],
+    // ["flutter", ["clean"]],
+    ["./ci/manual-build-alt-macos.sh", []],
+])
 
-// const appAndroidUpload = appGoalF("Flutter-Android-Upload", []);
+
 const appAndroidUploadDebug = new PublishToS3({
     displayName: "Flutter-Android-Debug-Upload",
     uniqueName: "flutter-android-debug-upload-s3",
@@ -133,8 +152,24 @@ const appAndroidUploadDebug = new PublishToS3({
             .replace(/^build\/app\/outputs\/apk\/debug/, "android")
             .replace(/app-debug.apk/, mkAppUploadFilename(gi.goalEvent, 'apk'))
     },
-    pathToIndex: `android/fluxApp-latest-build.apk`, // index file in your project
+    // pathToIndex: `android/fluxApp-latest-build.apk`, // index file in your project
     linkLabel: "Download APK",
+});
+
+
+const appIosUploadDebug = new PublishToS3({
+    displayName: "Flutter-Ios-Debug-Upload",
+    uniqueName: "flutter-ios-debug-upload-s3",
+    bucketName: fluxSitePreviewBucket,
+    region: fluxSitePreviewBucketRegion,
+    filesToPublish: ["ios/build/*.ipa"],
+    pathTranslation: (filepath: string, gi: GoalInvocation) => {
+        return filepath
+            .replace(/^ios\/build/, "ios")
+            .replace(/Runner\.ipa/, mkAppUploadFilename(gi.goalEvent, 'ipa'))
+    },
+    // pathToIndex: `ios/fluxApp-latest.ipa}`, // index file in your project
+    linkLabel: "Download IPA",
 });
 
 
@@ -165,8 +200,9 @@ const spellCheckMarkdown = (opts: Partial<SpellCheckOpts>) => goal({
             lang: "en-us",
             filesGlob: ["**/*.md"],
             ignoreNumbers: true,
-            ignoreAcronyms: true
-        }), ...opts
+            ignoreAcronyms: true,
+        }),
+        ...opts
     };
     const mdspellArgs = [
         ...(_opts.ignoreAcronyms ? ['-a'] : []),
@@ -207,11 +243,12 @@ const publishSitePreview = new PublishToS3IndexShimsAndUrlCustomizer({
     pathTranslation: (filepath: string, gi: GoalInvocation) => filepath.replace(/^_site/, `${getPreviewStub(gi)}`),
     pathToIndex: "_site/index.html", // index file in your project
     linkLabel: "S3OutputLink",
-    urlCustomizer: async (eus, gi) => !eus ? eus : eus.map(({label, url}) =>
-        (!!label && label === "S3OutputLink") ? {
+    urlCustomizer: async (eus, gi) => !eus ? eus : eus.map(
+        ({label, url}) => (!!label && label === "S3OutputLink") ? {
             label: "Deployment Preview",
             url: `https://${gi.goalEvent.branch}.${fluxPreviewDomain}/`
-        } : {url})
+        } : {url}
+    ),
 });
 
 // const publishSitePreviewIndexes = new PublishToS3({
@@ -264,11 +301,11 @@ export const FluxGoalCreator: GoalCreator<FluxGoals> = async sdm => {
         appAndroidUploadDebug,
         appAndroidReleaseUpload: nopGoal,
         appDocs: nopGoal,
-        appIosBuild: nopGoal,
+        appIosBuild,
         appIosSign: nopGoal,
-        appIosDebugUpload: nopGoal,
+        appIosUploadDebug,
         appIosReleaseUpload: nopGoal,
-        appIosTest: nopGoal,
+        appIosTest,
         appLint: nopGoal,
         appSetup: nopGoal,
         /* website goals */

@@ -58,7 +58,7 @@ export interface FluxGoals extends DeliveryGoals {
     appIosTest: DeliveryGoal;
     appIosBuild: DeliveryGoal;
     appIosSign: DeliveryGoal;
-    appIosDebugUpload: DeliveryGoal;
+    appIosUploadDebug: DeliveryGoal;
     appIosReleaseUpload: DeliveryGoal;
 
     /** Flux Site Goals */
