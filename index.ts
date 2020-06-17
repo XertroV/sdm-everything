@@ -39,6 +39,9 @@ import {CommandInvocation} from "@atomist/automation-client/lib/internal/invoker
 import {HandlerResult} from "@atomist/automation-client/lib/HandlerResult";
 import {EventFired} from "@atomist/automation-client/lib/HandleEvent";
 import {Destination, MessageOptions} from "@atomist/automation-client/lib/spi/message/MessageClient";
+import _ from "lodash";
+import {hasMarkdown} from "./lib/goals/pushTests";
+import {pushTest} from "@atomist/sdm";
 
 process.env.AWS_SDK_LOAD_CONFIG = "1";
 process.env.AWS_DEFAULT_REGION = "ap-southeast-2";
@@ -119,6 +122,7 @@ export class TestAutomationEventListener implements AutomationEventListener {
 }
 
 const configurer: Configurer<FluxGoals> = async (sdm): Promise<Record<string, GoalStructure>> => {
+    _.set(sdm.configuration, 'sdm.rolar.bufferSize', 1024);
     const goals = await sdm.createGoals(FluxGoalCreator, [FluxGoalConfigurer]);
 
     if (isInLocalMode()) {
@@ -190,13 +194,23 @@ const configurer: Configurer<FluxGoals> = async (sdm): Promise<Record<string, Go
                 test: [
                     isFluxSiteRepo,
                     shouldRebuildSite,
+                    pushTest('never', async () => false),
                 ],
                 goals: [
-                    [goals.msgAuthor, goals.siteBuild],
-                    [goals.siteGenPreviewPng, goals.sitePushS3, goals.sitePushS3Indexes, goals.sitePushS3Indexes2],
+                    [goals.siteBuild],
+                    [goals.siteGenPreviewPng, goals.sitePushS3],
+                    [goals.siteSpellcheck],
                     // goals.siteDeployPreviewCloudFront,
                 ],
             },
+            markdownSpellchecker: {
+                test: [
+                    hasMarkdown
+                ],
+                goals: [
+                    goals.siteSpellcheck
+                ]
+            }
         }
     }
 

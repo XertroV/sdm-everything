@@ -13,17 +13,23 @@ export interface SpawnCommand {
 }
 
 /**
- * Convenience function to create a spawn command from a sentence such
- * as "npm run compile" Does not respect quoted arguments.  Use
+ * Convenience function to create a spawn command from a string such
+ * as "npm run compile". **Does not respect quoted arguments**.  Use
  * spawnAndWatch passing it the command and argument array if your
  * command arguments have spaces, etc.
  *
- * @param {string} sentence command and argument string
+ * The function is unsafe because it does not respect quoted arguments.
+ * Particularly: `fullCmd.split(" ")` is the main operation.
+ *
+ * @param {string} fullCmd command and argument string
  * @param options
  * @return {SpawnCommand}
  */
-export function asSpawnCommand(sentence: string, options: SpawnOptions = {}): SpawnCommand {
-    const split = sentence.split(" ");
+export function asUnsafeSpawnCommand(fullCmd: string, options: SpawnOptions = {}): SpawnCommand {
+    if (fullCmd.includes("'") || fullCmd.includes('"')) {
+        logger.warn(`asUnsafeSpawnCommand detected a quotation mark in the command! JSON encoded: ${JSON.stringify({fullCmd})}`)
+    }
+    const split = fullCmd.split(" ").filter(v => v !== '');
     return {
         command: split[0],
         args: split.slice(1),

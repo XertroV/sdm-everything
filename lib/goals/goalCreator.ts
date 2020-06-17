@@ -28,9 +28,15 @@ import {
 } from "./goals";
 import {goal, GoalWithFulfillment} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
 import {logger} from "@atomist/automation-client/lib/util/logger";
-import {batchSpawn} from "../util/spawn";
+import {asUnsafeSpawnCommand, batchSpawn} from "../util/spawn";
 import {and} from "@atomist/sdm/lib/api/mapping/support/pushTestUtils";
-import {doWithProject, pushTest as mkPushTest, PushTest, spawnLog, SpawnLogOptions} from "@atomist/sdm";
+import {
+    doWithProject,
+    pushTest as mkPushTest,
+    PushTest,
+    spawnLog,
+    SpawnLogOptions, StringCapturingProgressLog
+} from "@atomist/sdm";
 import {PublishToS3} from "@atomist/sdm-pack-s3";
 import {GoalInvocation} from "@atomist/sdm/lib/api/goal/GoalInvocation";
 import {PublishToS3IndexShimsAndUrlCustomizer} from "../aws/s3";
@@ -74,20 +80,20 @@ const appGoalF = (
     return goal({
         displayName
     }, doWithProject(async pagi => {
-        const env = { ...flutterEnv, PUB_CACHE: `${pagi.project.baseDir}` };
+        const env = {...flutterEnv, PUB_CACHE: `${pagi.project.baseDir}`};
         // logging, env vars, and working dir
-        const opts: SpawnLogOptions = { log: pagi.progressLog, cwd: pagi.project.baseDir };
+        const opts: SpawnLogOptions = {log: pagi.progressLog, cwd: pagi.project.baseDir};
         await spawnLog("mkdir", ["-p", ".pub-cache"], opts);
         // compose the commands to run, mixing in opts.
         return await batchSpawn(spawns.map(
             // merge in user-provided opts with the progress log, env vars, etc.
-            ([cmd, args=[], otherOpts={}]) => ([cmd, args, {
+            ([cmd, args = [], otherOpts = {}]) => ([cmd, args, {
                 ...(opts),
                 ...(otherOpts),
-                env: { ...env, ...(otherOpts?.env || {}), PUB_CACHE: env.PUB_CACHE },
+                env: {...env, ...(otherOpts?.env || {}), PUB_CACHE: env.PUB_CACHE},
             }])
         ));
-    }), { pushTest });
+    }), {pushTest});
 };
 
 const appFlutterInfo = appGoalF("Flutter-Info", [
@@ -138,10 +144,58 @@ const appAndroidUploadDebug = new PublishToS3({
 
 
 // Build event for site
-const buildWebsite = new Build({ displayName: "Jekyll Build" }).with({
+const buildWebsite = new Build({displayName: "Jekyll Build"}).with({
     name: "Jekyll",
     builder: buildWebsiteBuilder,
+    // progressReporter: () => {}
 });
+
+type SpellCheckOpts = {
+    lang: "en-us" | "en-gb" | "en-au" | "es-es",
+    filesGlob: string | string[],
+    ignoreNumbers: boolean,
+    ignoreAcronyms: boolean
+};
+const spellCheckMarkdown = (opts: Partial<SpellCheckOpts>) => goal({
+    displayName: "Spellcheck",
+    uniqueName: "spellcheck"
+}, doWithProject(async (pagi) => {
+    const _opts = {
+        ...({
+            lang: "en-us",
+            filesGlob: ["**/*.md"],
+            ignoreNumbers: true,
+            ignoreAcronyms: true
+        }), ...opts
+    };
+    const mdspellArgs = [
+        ...(_opts.ignoreAcronyms ? ['-a'] : []),
+        ...(_opts.ignoreNumbers ? ['-n'] : []),
+        `--${_opts.lang}`,
+        `--report`,
+        Array.isArray(_opts.filesGlob) ? _opts.filesGlob.join(' ') : _opts.filesGlob
+    ].join(' ')
+    const progressLog = new StringCapturingProgressLog();
+    const toRun = asUnsafeSpawnCommand([
+            `docker run --rm -v ${pagi.project.baseDir}:/workdir`,
+            `tmaier/markdown-spellcheck:latest`,
+            mdspellArgs
+        ].join(' ')
+    );
+    const spellcheckRes = await pagi.spawn(toRun.command, toRun.args, {...toRun.options, log: progressLog});
+    const outputLines = progressLog.log.split('\n');
+    const output = ["To fix spelling mistakes, use `mdspell`.",
+        "", "* Install: `npm i markdown-spellcheck -g`",
+        `* Run: \`mdspell ${mdspellArgs}\``,
+        `* Hint: add exclusionary globs like \`'!node_modules/**/*'\` if you need to exclude some files or directories.`,
+        "",
+        ...outputLines
+    ].join('\n');
+    // this is left
+    spellcheckRes.message = output;
+    // logger.info(`Spellcheck Result: ${JSON.stringify(spellcheckRes)}`);
+    return spellcheckRes
+}))
 
 
 const publishSitePreview = new PublishToS3IndexShimsAndUrlCustomizer({
@@ -154,7 +208,10 @@ const publishSitePreview = new PublishToS3IndexShimsAndUrlCustomizer({
     pathToIndex: "_site/index.html", // index file in your project
     linkLabel: "S3OutputLink",
     urlCustomizer: async (eus, gi) => !eus ? eus : eus.map(({label, url}) =>
-            (!!label && label === "S3OutputLink") ? {label: "Deployment Preview", url: `https://${gi.goalEvent.branch}.${fluxPreviewDomain}/`} : {url})
+        (!!label && label === "S3OutputLink") ? {
+            label: "Deployment Preview",
+            url: `https://${gi.goalEvent.branch}.${fluxPreviewDomain}/`
+        } : {url})
 });
 
 // const publishSitePreviewIndexes = new PublishToS3({
@@ -205,7 +262,7 @@ export const FluxGoalCreator: GoalCreator<FluxGoals> = async sdm => {
         appAndroidSign,
         appAndroidTest,
         appAndroidUploadDebug,
-        appAndroidReleaseUpload:nopGoal,
+        appAndroidReleaseUpload: nopGoal,
         appDocs: nopGoal,
         appIosBuild: nopGoal,
         appIosSign: nopGoal,
@@ -217,6 +274,7 @@ export const FluxGoalCreator: GoalCreator<FluxGoals> = async sdm => {
         /* website goals */
         siteBuild: buildWebsite,
         siteGenPreviewPng: nopGoalF(2000, "Generate Preview Screenshot Placeholder"),
+        siteSpellcheck: spellCheckMarkdown({lang: "en-au"}),
         sitePushS3: publishSitePreview,
         // sitePushS3Indexes: publishSitePreviewIndexes,
         // sitePushS3Indexes2: publishSitePreviewIndexes2,

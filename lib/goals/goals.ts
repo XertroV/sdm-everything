@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {DeliveryGoals} from "@atomist/sdm-core/lib/machine/configure";
+// import {DeliveryGoals} from "@atomist/sdm-core/lib/machine/configure";
 import {Build} from "@atomist/sdm-pack-build";
 import {GoalWithFulfillment} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
 import {SdmGoalEvent} from "@atomist/sdm";
@@ -22,7 +22,7 @@ import {GoalInvocation} from "@atomist/sdm/lib/api/goal/GoalInvocation";
 import {safeBranchDns} from "../util/github";
 
 type DeliveryGoal = GoalWithFulfillment;
-
+type DeliveryGoals = Record<string, GoalWithFulfillment | Build>;
 
 export const fluxSitePreviewBucket = "sdm-edgelambda-test4-public";
 export const fluxSitePreviewBucketRegion = "us-east-1";
@@ -69,6 +69,7 @@ export interface FluxGoals extends DeliveryGoals {
     // sitePushS3Indexes2: GoalWithFulfillment;
     siteDeployPreviewCloudFront: GoalWithFulfillment;
     siteDeployPreviewSetupCloudfront: GoalWithFulfillment;
+    siteSpellcheck: GoalWithFulfillment;
 
     /** More general goals */
     // msgAuthor: GoalWithFulfillment;

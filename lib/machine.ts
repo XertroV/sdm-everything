@@ -15,13 +15,13 @@ import {PushListenerInvocation} from "@atomist/sdm/lib/api/listener/PushListener
 import {pushTest} from "@atomist/sdm/lib/api/mapping/PushTest";
 import {cfCreateDistribution} from "./aws/cloudfront";
 import {setGhCheckStatus} from "./listeners/GithubChecks";
-import {asSpawnCommand, SpawnCommand} from "./util/spawn";
+import {asUnsafeSpawnCommand, SpawnCommand} from "./util/spawn";
 import {isInLocalMode} from "@atomist/sdm-core/lib/internal/machine/modes";
 import {spawnBuilder} from "@atomist/sdm-pack-build";
 import {spawnLog} from "@atomist/sdm/lib/api-helper/misc/child_process";
 import {addCommentToRelevantPR, getGitHubApi} from "./util/github";
 
-const mkAppInfo = async (p: Project) => {
+export const mkAppInfo = async (p: {id: Project["id"]}) => {
     return {
         name: p.id.repo,
         version: p.id.sha || "0.0.0",
@@ -172,7 +172,7 @@ export const buildWebsiteOld = goal(
 }); */
 
 // @ts-ignore
-const toSpawnCommand = (c: string | SpawnCommand): SpawnCommand => typeof c === "string" ? asSpawnCommand(c) : c;
+const toSpawnCommand = (c: string | SpawnCommand): SpawnCommand => typeof c === "string" ? asUnsafeSpawnCommand(c) : c;
 
 export const buildWebsiteBuilder = spawnBuilder({
     name: "jekyll builder",

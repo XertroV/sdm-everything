@@ -15,13 +15,16 @@
  */
 
 import {GoalConfigurer} from "@atomist/sdm-core/lib/machine/configure";
-import {GitHubChecksListener} from "../listeners/GithubChecks";
+import {
+    GitHubChecksListener,
+} from "../listeners/GithubChecks";
 import {fluxAppPreviewBucket, FluxGoals, mkAppUploadFilename} from "./goals";
 // import {NpmNodeModulesCachePut, NpmNodeModulesCacheRestore} from "@atomist/sdm-pack-node/lib/listener/npm";
 import {isFlutterProject} from "./app/pushTests";
 import {batchSpawn} from "../util/spawn";
 import {mkCacheFuncs} from "../utils/cache";
-import {GoalExecutionListener} from "@atomist/sdm";
+// @ts-ignore
+import {GoalExecutionListener, GoalProjectListenerEvent, SdmGoalState} from "@atomist/sdm";
 import {addCommentToRelevantPR, getGitHubApi} from "../util/github";
 import {logger} from "@atomist/automation-client";
 
@@ -175,5 +178,34 @@ export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) 
     siteGenPreviewPng.withExecutionListener(GitHubChecksListener);
     siteDeployPreviewCloudFront.withExecutionListener(GitHubChecksListener);
 
+    goals.siteSpellcheck.withExecutionListener(GitHubChecksListener);
+
     logger.info("Finished setting up goal configuration.");
 };
+
+
+/*
+
+        .withProjectListener({listener: async (p, plgi) => {
+            const startTS = new Date();
+            // plgi.context.graphClient<>;
+            const checkLog = (n=30): any => {
+                console.warn(`checkLog running...`);
+                return GitHubChecksListenerFull({outputMsgF: async (geli) => ({
+                        ...(geli.goalEvent.state === SdmGoalState.in_process
+                            ? {
+                                status: "in_progress",
+                                startTS,
+                                output: mkGithubCheckOutput(geli.goal.name, `In Progressini: ${geli.goal.name}`, `\`\`\`\n${plgi.progressLog.log}\n\`\`\``),
+                        } : { ...(await mkGHChecksOutDefault(geli)), output: mkGithubCheckOutput(geli.goal.name, `Doneskies: ${geli.goal.name}`, `\`\`\`\n${plgi.progressLog.log}\n\`\`\``) }),
+                        ...({name: `${plgi.goal.name}-testing-live`}),
+                    })})(plgi).then(async () => {
+                    if ([SdmGoalState.in_process].includes(plgi.goalEvent.state)) {
+                        await snooze(3000);
+                        return await checkLog(n-1)
+                    }
+                })
+            };
+            new Promise((res, rej) => { checkLog().then(res).catch(rej) });
+        }, events: [GoalProjectListenerEvent.before], name: 'githubProgressLog'})
+ */

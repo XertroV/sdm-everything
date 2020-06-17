@@ -1,14 +1,15 @@
 import {logger} from "@atomist/automation-client/lib/util/logger";
 import {isInLocalMode} from "@atomist/sdm-core/lib/internal/machine/modes";
-import {SdmGoalState} from "@atomist/sdm-core/lib/typings/types";
 import {GoalExecutionListener, GoalExecutionListenerInvocation} from "@atomist/sdm/lib/api/listener/GoalStatusListener";
-import {get} from "lodash";
 
 import {Octokit} from "@octokit/rest";
 import {getGitHubApi} from "../util/github";
+import {ProgressLog, SdmGoalState} from "@atomist/sdm";
 
-export const mkGithubCheckOutput = (title: string, summary: string, text?: string) => {
-    return { title, summary, text };
+type MkGitHubCheckOutputResponse = { title: string, summary: string, text?: string };
+
+export const mkGithubCheckOutput = (title: string, summary: string, text?: string): MkGitHubCheckOutputResponse => {
+    return {title, summary, text};
 };
 
 type CheckStatsPs = Octokit.ChecksCreateParams & Octokit.RequestOptions;
@@ -17,7 +18,7 @@ interface GhCheckStatusOpts {
     name: string;
     gi: GoalExecutionListenerInvocation;
     status: CheckStatsPs["status"];
-    startTS: Date;
+    startTS?: Date;
     conclusion?: CheckStatsPs["conclusion"];
     endTS?: Date;
     output?: CheckStatsPs["output"];
@@ -32,10 +33,13 @@ export const setGhCheckStatus =
             return undefined;
         }
 
+        const extraParamsStartTs = !!startTS ? {started_at: startTS.toISOString()} : {};
+
         // if we include conclusion:undefined in the params object we'll get a validation error.
         const extraParamsAtEnd = status === "completed" ? {
             completed_at: endTS?.toISOString(),
             conclusion,
+            details_url: gi.goalEvent.url,
             ...(!!output ? {output} : {}),  // ahh, hacks. because ofc 'a' is in {a: undefined} but not in {}, even tho obj.a === undefined for both.
         } : {};
 
@@ -45,55 +49,113 @@ export const setGhCheckStatus =
             name,
             repo: gi.goalEvent.repo.name,
             owner: gi.goalEvent.repo.owner,
-            details_url: get(gi.goalEvent.externalUrls, 0, gi.goalEvent).url,
             external_id: gi.context.correlationId,
             status,
-            started_at: startTS.toISOString(),
+            details_url: gi.goalEvent.url,
+            ...extraParamsStartTs,
             ...extraParamsAtEnd,
         });
-};
+    };
 
-export const GitHubChecksListener: GoalExecutionListener = async (geli: GoalExecutionListenerInvocation) => {
-    if (isInLocalMode()) {
-        return { code: 0 };
+export const githubChecksLogsPassthrough: Partial<ProgressLog> = {
+    write: async (log) => {
     }
+}
 
-    const startTS = new Date();
 
-    let out: {
-        status: CheckStatsPs["status"],
-        conclusion?: CheckStatsPs["conclusion"],
-        output?: CheckStatsPs["output"],
-    } & Partial<Octokit.ChecksUpdateParams>;
+export type GHChecksListenerOutTy = {
+    status: CheckStatsPs["status"],
+    conclusion?: CheckStatsPs["conclusion"],
+    output?: CheckStatsPs["output"],
+} & Partial<GhCheckStatusOpts>;
+
+
+export type GitHubChecksListenerFullArgs = {
+    outputMsgF?: (geli: GoalExecutionListenerInvocation) => Promise<GHChecksListenerOutTy>;
+}
+
+
+// @ts-ignore
+const testRender = (geli: GoalExecutionListenerInvocation) => {
+    try {
+        return JSON.stringify({
+            ...geli,
+            context: null,
+            goal: null,
+            configuration: null,
+            credentials: null,
+            preferences: null,
+            addressChannels: null
+        })
+    } catch (e) {
+        return "Failed to stringify with " + e.toString();
+    }
+}
+
+
+export function replaceBadStdoutValues(output: string): string | undefined {
+    if ([
+        "See log\n"
+    ].includes(output)) {
+        return undefined;
+    }
+    return output;
+}
+
+
+export async function mkGHChecksOutDefault(geli: GoalExecutionListenerInvocation): Promise<GHChecksListenerOutTy> {
     if (geli.goalEvent.state === SdmGoalState.in_process) {
-        out = {
+        return {
             status: "in_progress",
-
+            startTS: new Date(),
         };
     } else {
         const conclusion = geli.result?.code !== 0 ? "failure" : "success";
-        const errorObjMessage = !!geli.error ? `Error: ${geli.error?.name}: ${geli.error?.message}` : undefined;
-        const detailsUrlSpread = geli.result?.externalUrls ? { details_url: geli.result?.externalUrls[0].url } : {};
-        out = {
+        const errorObjMessage = !!geli.error ? `## Error!\n\n### \`error.name\`: ${geli.error?.name}        
+
+#### \`error.message\`\n\n${geli.error?.message}\n\n#### \`goalEvent.error\`\n\n${geli.goalEvent.error}
+
+#### \`result.message\`\n\n${geli.result?.message}` : undefined;
+        const detailsUrlSpread = geli.result?.externalUrls ? {details_url: geli.result?.externalUrls[0].url} : {};
+        const result: any = geli.result;
+        const fullSummary = `### Output:
+
+\`\`\`
+${result?.message || '<No output from goal>' /* JSON.stringify(summaryJson, null, 2).replace(/\\n/g, '\n') */}
+\`\`\`
+`;
+        const origSummary = `Completed ${geli.goal.name}: ${conclusion}\n\n${geli.result?.message || "(no result.message)"}`;
+        // logger.info(`Full summary for github check: ${fullSummary}`)
+        const output = mkGithubCheckOutput(`${geli.goal.name}`, origSummary, errorObjMessage || fullSummary);
+        return {
             status: "completed",
             conclusion,
-            output: mkGithubCheckOutput(`${geli.goal.name}`, `Completed ${geli.goal.name}: ${conclusion}`,
-                geli.goalEvent.error || geli.result?.message || errorObjMessage),
+            output,
+            endTS: new Date(),
             ...detailsUrlSpread,
         };
     }
+}
 
-    const endTS = new Date();
+export const GitHubChecksListenerFull = ({outputMsgF}: GitHubChecksListenerFullArgs): GoalExecutionListener => async (geli: GoalExecutionListenerInvocation) => {
+    if (isInLocalMode()) {
+        return {code: 0};
+    }
+
+    const out: GHChecksListenerOutTy = await (!!outputMsgF ? outputMsgF(geli) : mkGHChecksOutDefault(geli));
+
     await setGhCheckStatus({
         name: geli.goal.name,
         gi: geli,
-        startTS,
-        endTS,
         ...out,
     });
 
-    return { code: 0 };
+    return {code: 0};
 };
+
+
+export const GitHubChecksListener = GitHubChecksListenerFull({});
+
 
 // export const GithubChecks: GoalExecutionListenerInvocation = {
 //     name: "publish github checks to reflect goal status",

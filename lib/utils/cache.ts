@@ -4,7 +4,7 @@ export const mkCacheFuncs = (classifier: string, cacheOpts: Partial<Omit<GoalCac
     return {
         put: cachePut({
             entries: [{
-                pattern: {globPattern: directory || classifier},
+                pattern: {directory: directory || classifier},
                 classifier
             }],
             ...cacheOpts,
