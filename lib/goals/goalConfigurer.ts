@@ -138,18 +138,23 @@ export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) 
             .withProjectListener(flutterPubCache.put)
     }); */
     appAndroidBuild
+        .withExecutionListener(GitHubChecksListener)
         .withProjectListener(flutterDebugApkCache.put)
     appIosBuild
+        .withExecutionListener(GitHubChecksListener)
         .withProjectListener(flutterDebugIpaCache.put)
 
     appAndroidSign
+        .withExecutionListener(GitHubChecksListener)
         .withProjectListener(flutterReleaseApkCache.restore)
         .withProjectListener(flutterReleaseApkCache.put);
     appIosSign
+        .withExecutionListener(GitHubChecksListener)
         .withProjectListener(flutterReleaseIpaCache.restore)
         .withProjectListener(flutterReleaseIpaCache.put);
 
     appAndroidUploadDebug
+        .withExecutionListener(GitHubChecksListener)
         .withProjectListener(flutterDebugApkCache.restore)
         .withExecutionListener(flutterAndroidUploadDebugGithubPRComment);
 
