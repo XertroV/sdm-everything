@@ -141,7 +141,7 @@ const xcodebuildCleanArchiveArgs = [
     "-workspace", "Runner.xcworkspace",
     "-scheme", "Runner",
     "-archivePath", "RunnerArchive",
-    "-allowProvisioningUpdates"
+    "-allowProvisioningUpdates",
 ]
 const xcodebuildExportArchiveArgs = (exportOptsPlist: "debug" | "release" = "debug") => [
     "-exportArchive",
@@ -150,7 +150,8 @@ const xcodebuildExportArchiveArgs = (exportOptsPlist: "debug" | "release" = "deb
     " -exportPath",
     "./build",
     "-exportOptionsPlist",
-    `ciExportOptions/${exportOptsPlist}.plist`,
+    `./ciExportOptions/${exportOptsPlist}.plist`,
+    "-allowProvisioningUpdates",
 ]
 const appIosBuild = appGoalF("Flutter-Ios-Build", [
     ["flutter", ["precache"]],
