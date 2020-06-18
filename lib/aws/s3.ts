@@ -54,13 +54,11 @@ export function executePublishToS3Shim(inputParams: PublishToS3Options & Publish
         (tform || ((fp) => fp))(!!inputParams.pathTranslation ? inputParams.pathTranslation(filepath, gi) : filepath, gi);
 
     // main s3 push execution
-    const results = [executePublishToS3(inputParams)];
+    const results = [await executePublishToS3(inputParams)];
     if (inputParams.enableIndexShims) {
         const filesToPublishIndexShim = inputParams.filesToPublish.filter(gp => gp.endsWith("/*")).map(gp => gp.slice(0, gp.length - 2) + "/index.html").filter(gp => gp.endsWith("/index.html"));
         logger.info(`executePublishToS3Shim:
-    
 baseFileGlobs: ${JSON.stringify(inputParams.filesToPublish, null, 2)}
-
 and fileGlobs related to index shims: ${JSON.stringify(filesToPublishIndexShim, null, 2)}`);
 
         const shim1 = executePublishToS3({
@@ -73,12 +71,13 @@ and fileGlobs related to index shims: ${JSON.stringify(filesToPublishIndexShim, 
             filesToPublish: filesToPublishIndexShim,
             pathTranslation: ptWrapper((fp) => fp.replace('index.html', ''))
         });
-        results.push(shim1, shim2);
+        results.push(shim1);
+        results.push(shim2)
     }
 
     return (async gi => {
         // const [mainRes, s1Res, s2Res]
-        const ress = await Promise.all(results);
+        const ress = await Promise.all(results.map(f => f(gi)));
         const codes = ress.map(r => _.get(r, 'code')).filter(c => c !== undefined);
         const nonZeroCodes = codes.filter(c => c !== 0)
         const promExtUrls = await Promise.all(_.flatten(ress.map(r =>
