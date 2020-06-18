@@ -117,7 +117,7 @@ const fmtCodeFence = (codeStr?: string, lang?: string, force: boolean = false) =
 
 
 function renderErrorObjMessage(geli: GoalExecutionListenerInvocation) {
-    return !!geli.error ? `## Error!\n\n### \`error.name\`: \`${geli.error?.name}\`        
+    return !!geli.error ? `## Error!\n\n### \`error.name\`: \`${geli.error?.name}\`
 
 #### \`error.message\`\n\n${fmtCodeFence(geli.error?.message)}
 
@@ -140,7 +140,7 @@ export async function mkGHChecksOutDefault(geli: GoalExecutionListenerInvocation
     } else {
         const conclusion = geli.result?.code !== 0 ? "failure" : "success";
         const errorObjMessage = renderErrorObjMessage(geli);
-        const detailsUrlSpread = geli.result?.externalUrls ? {details_url: geli.result?.externalUrls[0].url} : {};
+        const detailsUrlSpread = geli.result?.externalUrls ? {details_url: geli.result?.externalUrls[0]?.url} : {};
         const result: any = geli.result;
         const fullSummary = getFullSummary(result);
         const origSummary = `Completed ${geli.goal.name}: ${conclusion}\n\n${geli.result?.message || "(no result.message)"}`;
