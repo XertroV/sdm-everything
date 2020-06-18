@@ -34,7 +34,7 @@ export const flutterPubCache = mkCacheFuncs("flutter-pub-cache", {
     onCacheMiss: [{
         name: "flutter packages get",
         listener: async (p, gi) => {
-            const opts = {cwd: p.baseDir, log: gi.progressLog, env: { ...process.env, PUB_CACHE: p.baseDir }};
+            const opts = {cwd: p.baseDir, log: gi.progressLog, env: { ...process.env, /* PUB_CACHE: p.baseDir */ }};
             await batchSpawn([
                 ["mkdir", ["-p", ".pub-cache"], opts],
                 ["flutter", ["precache"], opts],

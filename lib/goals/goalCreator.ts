@@ -34,7 +34,6 @@ import {
     doWithProject,
     pushTest as mkPushTest,
     PushTest,
-    spawnLog,
     SpawnLogOptions, StringCapturingProgressLog
 } from "@atomist/sdm";
 import {PublishToS3} from "@atomist/sdm-pack-s3";
@@ -81,17 +80,17 @@ const appGoalF = (
     return goal({
         displayName
     }, doWithProject(async pagi => {
-        const env = {...flutterEnv, PUB_CACHE: `${pagi.project.baseDir}`};
+        const env = {...flutterEnv, /* PUB_CACHE: `${pagi.project.baseDir}` */ };
         // logging, env vars, and working dir
         const opts: SpawnLogOptions = {log: pagi.progressLog, cwd: pagi.project.baseDir};
-        await spawnLog("mkdir", ["-p", ".pub-cache"], opts);
+        // await spawnLog("mkdir", ["-p", ".pub-cache"], opts);
         // compose the commands to run, mixing in opts.
         const result = await batchSpawn(spawns.map(
             // merge in user-provided opts with the progress log, env vars, etc.
             ([cmd, args = [], otherOpts = {}]) => ([cmd, args, {
                 ...(opts),
                 ...(otherOpts),
-                env: {...env, ...(otherOpts?.env || {}), PUB_CACHE: env.PUB_CACHE},
+                env: {...env, ...(otherOpts?.env || {}), /* PUB_CACHE: env.PUB_CACHE */ },
             }])
         ));
         logger.info(`appGoalF returning code ${result.code} with message:\n\n${result.message}`);
