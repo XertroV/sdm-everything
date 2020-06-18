@@ -145,10 +145,10 @@ const xcodebuildExportArchiveArgs = (exportOptsPlist: "debug" | "release" = "deb
     "-exportArchive",
     "-archivePath",
     "RunnerArchive.xcarchive",
+    " -exportPath",
+    "./build",
     "-exportOptionsPlist",
     `ciExportOptions/${exportOptsPlist}.plist`,
-    " -exportPath",
-    "./build"
 ]
 const appIosBuild = appGoalF("Flutter-Ios-Build", [
     ["flutter", ["precache"]],
