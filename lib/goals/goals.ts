@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-// import {DeliveryGoals} from "@atomist/sdm-core/lib/machine/configure";
 import {Build} from "@atomist/sdm-pack-build";
 import {GoalWithFulfillment} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
 import {SdmGoalEvent} from "@atomist/sdm";
 import {GoalInvocation} from "@atomist/sdm/lib/api/goal/GoalInvocation";
 import {safeBranchDns} from "../util/github";
 
-type DeliveryGoal = GoalWithFulfillment;
+type DeliveryGoalWFulfillment = GoalWithFulfillment;
 type DeliveryGoals = Record<string, GoalWithFulfillment | Build>;
 
 export const fluxSitePreviewBucket = "sdm-edgelambda-test4-public";
@@ -44,29 +43,27 @@ export const mkAppUploadFilename = (ge: SdmGoalEvent, ext: string): string =>
  * Interface to capture all goals that this SDM will manage
  */
 export interface FluxGoals extends DeliveryGoals {
-    nop: DeliveryGoal;
+    nop: DeliveryGoalWFulfillment;
 
     /** Flux App Goals */
-    appFlutterInfo: DeliveryGoal;
-    appLint: DeliveryGoal;
-    appDocs: DeliveryGoal;
-    appAndroidTest: DeliveryGoal;
-    appAndroidBuild: DeliveryGoal;
-    appAndroidSign: DeliveryGoal;
-    appAndroidReleaseUpload: DeliveryGoal;
-    appAndroidUploadDebug: DeliveryGoal;
-    appIosTest: DeliveryGoal;
-    appIosBuild: DeliveryGoal;
-    appIosSign: DeliveryGoal;
-    appIosUploadDebug: DeliveryGoal;
-    appIosReleaseUpload: DeliveryGoal;
+    appFlutterInfo: DeliveryGoalWFulfillment;
+    appLint: DeliveryGoalWFulfillment;
+    appDocs: DeliveryGoalWFulfillment;
+    appAndroidTest: DeliveryGoalWFulfillment;
+    appAndroidBuild: DeliveryGoalWFulfillment;
+    appAndroidSign: DeliveryGoalWFulfillment;
+    appAndroidReleaseUpload: DeliveryGoalWFulfillment;
+    appAndroidUploadDebug: DeliveryGoalWFulfillment;
+    appIosTest: DeliveryGoalWFulfillment;
+    appIosBuild: DeliveryGoalWFulfillment;
+    appIosSign: DeliveryGoalWFulfillment;
+    appIosUploadDebug: DeliveryGoalWFulfillment;
+    appIosReleaseUpload: DeliveryGoalWFulfillment;
 
     /** Flux Site Goals */
     siteBuild: Build;
-    siteGenPreviewPng: DeliveryGoal;
+    siteGenPreviewPng: DeliveryGoalWFulfillment;
     sitePushS3: GoalWithFulfillment;
-    // sitePushS3Indexes: GoalWithFulfillment;
-    // sitePushS3Indexes2: GoalWithFulfillment;
     siteDeployPreviewCloudFront: GoalWithFulfillment;
     siteDeployPreviewSetupCloudfront: GoalWithFulfillment;
     siteSpellcheck: GoalWithFulfillment;

@@ -39,8 +39,9 @@ export function asUnsafeSpawnCommand(fullCmd: string, options: SpawnOptions = {}
 }
 
 
-type FunctionArgs<F> = F extends (...args: infer T) => any ? T : never;
-type SpawnLogArgs = FunctionArgs<typeof spawnLog>;
+export type FunctionArgs<F> = F extends (...args: infer T) => any ? T : never;
+export type SpawnLogArgs = FunctionArgs<typeof spawnLog>;
+export type BatchSpawnLogArgs = [SpawnLogArgs[0], SpawnLogArgs[1], SpawnLogArgs[2]]
 
 
 const renderMessages = (cmds: string[], msgs: string[]): string => {
@@ -52,7 +53,7 @@ const renderMessages = (cmds: string[], msgs: string[]): string => {
 }
 
 
-export async function batchSpawn(spawns: SpawnLogArgs[]) {
+export async function batchSpawn(spawns: BatchSpawnLogArgs[]) {
     let lastResult = { code: -1, message: "Empty array given to batchSpawn.", cmdString: "<empty>" } as SpawnLogResult;
     const messages = [];
     const commands = [];

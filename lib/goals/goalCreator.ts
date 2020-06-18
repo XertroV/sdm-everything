@@ -28,10 +28,10 @@ import {
 } from "./goals";
 import {goal, GoalWithFulfillment} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
 import {logger} from "@atomist/automation-client/lib/util/logger";
-import {asUnsafeSpawnCommand, batchSpawn} from "../util/spawn";
+import {asUnsafeSpawnCommand, batchSpawn, BatchSpawnLogArgs} from "../util/spawn";
 import {and} from "@atomist/sdm/lib/api/mapping/support/pushTestUtils";
 import {
-    doWithProject,
+    doWithProject, ProjectAwareGoalInvocation,
     pushTest as mkPushTest,
     PushTest,
     SpawnLogOptions, StringCapturingProgressLog
@@ -51,7 +51,8 @@ export const ptFalse: PushTest = mkPushTest("always False", async () => false);
 /**
  * [cmd, args, Opts?]
  */
-type SpawnEntry = [string, string[], SpawnLogOptions] | [string, string[]];
+type SpawnLogModifiers = Partial<{ subdir: string | ((pagi: ProjectAwareGoalInvocation) => Promise<string>) }>
+type SpawnEntry = [string, string[], SpawnLogOptions?, SpawnLogModifiers?];
 
 const flutterEnv = {
     JAVA_HOME: process.env.JAVA_HOME,
@@ -81,17 +82,21 @@ const appGoalF = (
     return goal({
         displayName
     }, doWithProject(async pagi => {
-        const env = {...flutterEnv, /* PUB_CACHE: `${pagi.project.baseDir}` */ };
+        const env = {...flutterEnv, /* PUB_CACHE: `${pagi.project.baseDir}` */};
         // logging, env vars, and working dir
         const opts: SpawnLogOptions = {log: pagi.progressLog, cwd: pagi.project.baseDir};
         // await spawnLog("mkdir", ["-p", ".pub-cache"], opts);
         // compose the commands to run, mixing in opts.
         const result = await batchSpawn(spawns.map(
             // merge in user-provided opts with the progress log, env vars, etc.
-            ([cmd, args = [], otherOpts = {}]) => ([cmd, args, {
+            ([cmd, args = [], otherOpts = {}, modifiers = {}]) => ([cmd, args, {
                 ...(opts),
                 ...(otherOpts),
-                env: {...env, ...(otherOpts?.env || {}), /* PUB_CACHE: env.PUB_CACHE */ },
+                cwd: (otherOpts.cwd || opts.cwd) + (
+                    !modifiers.subdir ? "" : (typeof modifiers.subdir === "string"
+                            ? modifiers.subdir : await modifiers.subdir(pagi)
+                    )),
+                env: {...env, ...(otherOpts?.env || {}), /* PUB_CACHE: env.PUB_CACHE */},
             }])
         ));
         logger.info(`appGoalF returning code ${result.code} with message:\n\n${result.message}`);
@@ -128,16 +133,31 @@ const appAndroidSign: GoalWithFulfillment = appGoalF("Flutter-Android-Sign", [
     ["ls", ["-al", "build/app/outputs/apk/"]],
 ]);
 
+const xcodebuildCleanArchiveArgs = [
+    "clean", "archive",
+    "-workspace", "Runner.xcworkspace",
+    "-scheme", "Runner",
+    "-archivePath", "RunnerArchive",
+    "-allowProvisioningUpdates"
+]
+const xcodebuildExportArchiveArgs = (exportOptsPlist: "debug" | "release" = "debug") => [
+    "-exportArchive",
+    "-archivePath",
+    "RunnerArchive.xcarchive",
+    "-exportOptionsPlist",
+    `ciExportOptions/${exportOptsPlist}.plist`,
+    " -exportPath",
+    "./build"
+]
 const appIosBuild = appGoalF("Flutter-Ios-Build", [
     ["flutter", ["precache"]],
+    // if we use --debug instead of --release it includes all the dev symbols, etc
+    // and --no-codesign is okay because we add that later with the xcodebuild commands.
     ["flutter", ["build", "ios", "--release", "--no-codesign"]],
-    ["xcodebuild", "clean archive -workspace Runner.xcworkspace -scheme Runner -archivePath RunnerArchive -allowProvisioningUpdates".split(" ")],
-    ["xcodebuild", "-exportArchive -archivePath RunnerArchive.xcarchive -exportOptionsPlist ciExportOptions/debug.plist -exportPath ./build".split(" ")],
+    ["xcodebuild", xcodebuildCleanArchiveArgs, undefined, {subdir: "ios"}],
+    ["xcodebuild", xcodebuildExportArchiveArgs("debug"), undefined, {subdir: "ios"}],
     ["cp", ["ios/build/Runner.ipa", "ios/build/fluxApp-debug.ipa"]],
     ["cp", ["ios/build/Runner.ipa", "ios/build/fluxApp-latest.ipa"]],
-    // ["flutter", ["packages", "get"]],
-    // // ["flutter", ["clean"]],
-    // ["./ci/_auto_testing-build-alt-macos.sh", []],
 ])
 const appIosTest = appGoalF("Flutter-Ios-Test", [
     ["flutter", ["precache"]],
