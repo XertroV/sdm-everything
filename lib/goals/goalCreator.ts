@@ -132,7 +132,7 @@ const appIosBuild = appGoalF("Flutter-Ios-Build", [
     ["flutter", ["precache"]],
     ["flutter", ["packages", "get"]],
     // ["flutter", ["clean"]],
-    ["./ci/manual-build-alt-macos.sh", []],
+    ["./ci/_auto_testing-build-alt-macos.sh", []],
 ])
 const appIosTest = appGoalF("Flutter-Ios-Test", [
     ["flutter", ["precache"]],
