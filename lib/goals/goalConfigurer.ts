@@ -18,7 +18,7 @@ import {GoalConfigurer} from "@atomist/sdm-core/lib/machine/configure";
 import {
     GitHubChecksListener,
 } from "../listeners/GithubChecks";
-import {fluxAppPreviewBucket, FluxGoals, mkAppUploadFilename} from "./goals";
+import {FluxGoals, fluxPreviewDomain, mkAppUploadFilename} from "./goals";
 // import {NpmNodeModulesCachePut, NpmNodeModulesCacheRestore} from "@atomist/sdm-pack-node/lib/listener/npm";
 import {isFlutterProject} from "./app/pushTests";
 import {batchSpawn} from "../util/spawn";
@@ -93,10 +93,11 @@ const flutterUploadDebugGithubPRComment = (_os: AppBuildForOs): GoalExecutionLis
     const fname = mkAppUploadFilename(gi.goalEvent, ext);
     const body = `### Build outputs for ${gi.id.sha}
 
-* Debug APK: <http://${fluxAppPreviewBucket}.s3.amazonaws.com/${_os}/${fname}>
+* Debug ${ext.toUpperCase()}: <http://${_os}.${fluxPreviewDomain}/${fname}>
 
 :tada:`;
-    await gi.addressChannels(`Flux App Debug Build for ${gi.id.sha?.slice(0, 7)}: http://${fluxAppPreviewBucket}.s3.amazonaws.com/${_os}/${fname}`);
+    const shaStub = gi.id.sha?.slice(0, 7);
+    await gi.addressChannels(`Flux App Debug Build for ${shaStub}: <http://${_os}.${fluxPreviewDomain}/${fname}>`);
     const gh = await getGitHubApi(gi);
     await addCommentToRelevantPR(gi, gh, body);
 };
