@@ -103,6 +103,26 @@ export function replaceBadStdoutValues(output: string): string | undefined {
 }
 
 
+const fmtCodeFence = (codeStr?: string, lang?: string) => {
+    return !!codeStr ? ("```" + (!!lang ? lang : '') + "\n" + codeStr + "\n```\n") : codeStr;
+}
+
+
+function renderErrorObjMessage(geli: GoalExecutionListenerInvocation) {
+    return !!geli.error ? `## Error!\n\n### \`error.name\`: ${fmtCodeFence(geli.error?.name)}        
+
+#### \`error.message\`\n\n${fmtCodeFence(geli.error?.message)}
+
+#### \`result.message\`\n\n${fmtCodeFence(geli.result?.message)}` : undefined;
+}
+
+function getFullSummary(result: any) {
+    return `### Output:
+
+${fmtCodeFence(result?.message) || '<No output from goal>' /* JSON.stringify(summaryJson, null, 2).replace(/\\n/g, '\n') */}
+`;
+}
+
 export async function mkGHChecksOutDefault(geli: GoalExecutionListenerInvocation): Promise<GHChecksListenerOutTy> {
     if (geli.goalEvent.state === SdmGoalState.in_process) {
         return {
@@ -111,19 +131,10 @@ export async function mkGHChecksOutDefault(geli: GoalExecutionListenerInvocation
         };
     } else {
         const conclusion = geli.result?.code !== 0 ? "failure" : "success";
-        const errorObjMessage = !!geli.error ? `## Error!\n\n### \`error.name\`: ${geli.error?.name}        
-
-#### \`error.message\`\n\n${geli.error?.message}\n\n#### \`goalEvent.error\`\n\n${geli.goalEvent.error}
-
-#### \`result.message\`\n\n${geli.result?.message}` : undefined;
+        const errorObjMessage = renderErrorObjMessage(geli);
         const detailsUrlSpread = geli.result?.externalUrls ? {details_url: geli.result?.externalUrls[0].url} : {};
         const result: any = geli.result;
-        const fullSummary = `### Output:
-
-\`\`\`
-${result?.message || '<No output from goal>' /* JSON.stringify(summaryJson, null, 2).replace(/\\n/g, '\n') */}
-\`\`\`
-`;
+        const fullSummary = getFullSummary(result);
         const origSummary = `Completed ${geli.goal.name}: ${conclusion}\n\n${geli.result?.message || "(no result.message)"}`;
         // logger.info(`Full summary for github check: ${fullSummary}`)
         const output = mkGithubCheckOutput(`${geli.goal.name}`, origSummary, errorObjMessage || fullSummary);
