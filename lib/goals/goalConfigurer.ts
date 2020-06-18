@@ -60,23 +60,49 @@ const flutterDebugIpaCache = mkCacheFuncs("flutter-build-ipa-debug", {
 }, "ios/build/");
 
 
+const osToAppExtension = {
+    "android": "apk",  // "aab" (I think..)
+    "android-appbundle": "aab",
+    "ios": "ipa"
+}
+
+type AppBuildForOs = keyof typeof osToAppExtension;
+
+// const flutterAndroidUploadDebugGithubPRComment: GoalExecutionListener = async (gi): Promise<void> => {
+//     if (gi.goalEvent.state !== "success") {
+//         return;
+//     }
+//     const fname = mkAppUploadFilename(gi.goalEvent, 'apk');
+//     const body = `### Build outputs for ${gi.id.sha}
+//
+// * Debug APK: <http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/${fname}>
+// <!-- * S3 Link: <http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/fluxApp-latest-build.apk> -->
+//
+// :tada:`;
+//     await gi.addressChannels(`Flux App Debug Build for ${gi.id.sha?.slice(0, 7)}: http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/${fname}`);
+//     const gh = await getGitHubApi(gi);
+//     await addCommentToRelevantPR(gi, gh, body);
+// };
 
 
-const flutterAndroidUploadDebugGithubPRComment: GoalExecutionListener = async (gi): Promise<void> => {
+const flutterUploadDebugGithubPRComment = (_os: AppBuildForOs): GoalExecutionListener => async (gi): Promise<void> => {
+    const ext = osToAppExtension[_os];
     if (gi.goalEvent.state !== "success") {
         return;
     }
-    const fname = mkAppUploadFilename(gi.goalEvent, 'apk');
+    const fname = mkAppUploadFilename(gi.goalEvent, ext);
     const body = `### Build outputs for ${gi.id.sha}
 
-* Debug APK: <http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/${fname}>
-<!-- * S3 Link: <http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/fluxApp-latest-build.apk> -->
+* Debug APK: <http://${fluxAppPreviewBucket}.s3.amazonaws.com/${_os}/${fname}>
 
 :tada:`;
-    await gi.addressChannels(`Flux App Debug Build for ${gi.id.sha?.slice(0, 7)}: http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/${fname}`);
+    await gi.addressChannels(`Flux App Debug Build for ${gi.id.sha?.slice(0, 7)}: http://${fluxAppPreviewBucket}.s3.amazonaws.com/${_os}/${fname}`);
     const gh = await getGitHubApi(gi);
     await addCommentToRelevantPR(gi, gh, body);
 };
+
+const flutterAndroidUploadDebugGithubPRComment: GoalExecutionListener = flutterUploadDebugGithubPRComment("android");
+const flutterIosUploadDebugGithubPRComment: GoalExecutionListener = flutterUploadDebugGithubPRComment("ios");
 
 
 /**
@@ -129,7 +155,8 @@ export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) 
     // goals.appFlutterInfo
     //     .withExecutionListener(flutterAndroidUploadDebugGithubPRComment);
 
-    const {appAndroidBuild, appIosBuild, appIosSign, appAndroidSign, appAndroidUploadDebug} = goals;
+    goals.appFlutterInfo
+        .withExecutionListener(GitHubChecksListener)
 
     // flutter pub cache
     /* [appIosBuild, appAndroidBuild, appIosTest, appAndroidTest].map(goal => {
@@ -137,26 +164,31 @@ export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) 
             .withProjectListener(flutterPubCache.restore)
             .withProjectListener(flutterPubCache.put)
     }); */
-    appAndroidBuild
+    goals.appAndroidBuild
         .withExecutionListener(GitHubChecksListener)
         .withProjectListener(flutterDebugApkCache.put)
-    appIosBuild
+    goals.appIosBuild
         .withExecutionListener(GitHubChecksListener)
         .withProjectListener(flutterDebugIpaCache.put)
 
-    appAndroidSign
+    goals.appAndroidSign
         .withExecutionListener(GitHubChecksListener)
         .withProjectListener(flutterReleaseApkCache.restore)
         .withProjectListener(flutterReleaseApkCache.put);
-    appIosSign
+    goals.appIosSign
         .withExecutionListener(GitHubChecksListener)
         .withProjectListener(flutterReleaseIpaCache.restore)
         .withProjectListener(flutterReleaseIpaCache.put);
 
-    appAndroidUploadDebug
+    goals.appAndroidUploadDebug
         .withExecutionListener(GitHubChecksListener)
         .withProjectListener(flutterDebugApkCache.restore)
         .withExecutionListener(flutterAndroidUploadDebugGithubPRComment);
+    goals.appIosUploadDebug
+        .withExecutionListener(GitHubChecksListener)
+        .withProjectListener(flutterDebugIpaCache.restore)
+        .withExecutionListener(flutterIosUploadDebugGithubPRComment);
+
 
     // website stuff
     const { siteBuild, siteDeployPreviewCloudFront, siteGenPreviewPng, sitePushS3 } = goals;
