@@ -44,16 +44,23 @@ export type SpawnLogArgs = FunctionArgs<typeof spawnLog>;
 export type BatchSpawnLogArgs = [SpawnLogArgs[0], SpawnLogArgs[1], SpawnLogArgs[2]]
 
 
-const renderMessages = (cmds: string[], msgs: string[]): string => {
-    return _.flow(
+const renderMessages = (cmds: string[], msgs: string[], opts?: {alwaysShort?: boolean, addFence?: boolean}): string => {
+    const final = _.flow(
         _.zip(cmds),
         _.map(([cmd, msg]) => `  >>running>>  ${cmd}\n\n${msg}`),
         _.join('\n\n')
     )(msgs);
+    logger.info(`renderMessages produced output of length ${final.length}`);
+    const fenceAddition = !!opts?.addFence ? "```\n" : ""
+    return [
+        fenceAddition,
+        (final.length >= 65535 || opts?.alwaysShort) ? `TRUNCATED -- SEE ATOMIST LOGS FOR FULL DETAILS.\n\n${final.slice(final.length - 2048)}` : final,
+        fenceAddition
+    ].join("");
 }
 
 
-export async function batchSpawn(spawns: BatchSpawnLogArgs[]) {
+export async function batchSpawn(spawns: BatchSpawnLogArgs[], batchOpts?: {truncateLog?: boolean, addFence?: boolean}) {
     let lastResult = { code: -1, message: "Empty array given to batchSpawn.", cmdString: "<empty>" } as SpawnLogResult;
     const messages = [];
     const commands = [];
@@ -74,13 +81,13 @@ export async function batchSpawn(spawns: BatchSpawnLogArgs[]) {
         if (lastResult.code !== 0) {
             return {
                 ...lastResult,
-                message: renderMessages(commands, messages)
+                message: renderMessages(commands, messages, {alwaysShort: batchOpts?.truncateLog, addFence: batchOpts?.addFence })
             };
         }
     }
     return {
         ...lastResult,
-        message: renderMessages(commands, messages),
+        message: renderMessages(commands, messages,{alwaysShort: batchOpts?.truncateLog, addFence: batchOpts?.addFence }),
         cmdString: commands.join("\n"),
     };
 }
