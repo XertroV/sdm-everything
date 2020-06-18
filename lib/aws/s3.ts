@@ -9,6 +9,7 @@ import {executePublishToS3} from "@atomist/sdm-pack-s3/lib/publishToS3";
 import {GoalInvocation} from "@atomist/sdm/lib/api/goal/GoalInvocation";
 import _ from "lodash";
 import {GoalWithFulfillment} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
+import {logger} from "@atomist/automation-client";
 
 type ExtUrl = { label?: string, url: string };
 type ExternalUrls<T = ExtUrl> = Array<T>;
@@ -47,10 +48,16 @@ export class PublishToS3IndexShimsAndUrlCustomizer extends GoalWithFulfillment {
 }
 
 export function executePublishToS3Shim(inputParams: PublishToS3Options & UrlCustomizerOptions): ExecuteGoal {
-    const filesToPublishIndexShim = inputParams.filesToPublish.map(gp => gp.replace(/\/\*$/, "/index.html")).filter(gp => gp.endsWith("/index.html"));
+    const filesToPublishIndexShim = inputParams.filesToPublish.filter(gp => gp.endsWith("/*")).map(gp => gp.slice(0, gp.length - 2) + "/index.html").filter(gp => gp.endsWith("/index.html"));
 
     const ptWrapper = (tform: PathTranslation) => (filepath: string, gi: GoalInvocation) =>
         (tform || ((fp) => fp))(!!inputParams.pathTranslation ? inputParams.pathTranslation(filepath, gi) : filepath, gi);
+
+    logger.info(`executePublishToS3Shim:
+    
+baseFileGlobs: ${JSON.stringify(inputParams.filesToPublish, null, 2)}
+
+and fileGlobs related to index shims: ${JSON.stringify(filesToPublishIndexShim, null, 2)}`);
 
     const shim1 = executePublishToS3({
         ...inputParams,
@@ -61,8 +68,6 @@ export function executePublishToS3Shim(inputParams: PublishToS3Options & UrlCust
         ...inputParams,
         filesToPublish: filesToPublishIndexShim,
         pathTranslation: ptWrapper((fp) => fp.replace('index.html', ''))
-        // (filepath: string, gi: GoalInvocation) =>
-        // !!inputParams.pathTranslation ? inputParams.pathTranslation(filepath, gi).replace('/index.html', '') : filepath,
     });
     const main = executePublishToS3(inputParams);
 
