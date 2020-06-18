@@ -10,11 +10,11 @@ import {GoalInvocation} from "@atomist/sdm/lib/api/goal/GoalInvocation";
 import _ from "lodash";
 import {GoalWithFulfillment} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
 
-type ExtUrl = { label?: string, url: string};
+type ExtUrl = { label?: string, url: string };
 type ExternalUrls<T = ExtUrl> = Array<T>;
-
-type UrlCustomizer = {
-    urlCustomizer: (externalUrls: ExternalUrls | undefined, gi: GoalInvocation) => Promise<ExternalUrls | undefined>
+export type UrlCustomizer = (externalUrls: ExternalUrls | undefined, gi: GoalInvocation) => Promise<ExternalUrls | undefined>;
+export type UrlCustomizerOptions = {
+    urlCustomizer: UrlCustomizer;
 }
 
 type PathTranslation = PublishToS3Options["pathTranslation"];
@@ -23,7 +23,7 @@ const isNotUndefined = <T>(t: T | undefined): t is T => t !== undefined;
 
 // we don't extend PublishToS3 as the super.register will trigger the normal executePublishToS3
 export class PublishToS3IndexShimsAndUrlCustomizer extends GoalWithFulfillment {
-    constructor(private readonly optionsExt: PublishToS3Options & PredicatedGoalDefinition & UrlCustomizer) {
+    constructor(private readonly optionsExt: PublishToS3Options & PredicatedGoalDefinition & UrlCustomizerOptions) {
         super({
             workingDescription: "Publishing to S3",
             completedDescription: "Published to S3",
@@ -46,11 +46,11 @@ export class PublishToS3IndexShimsAndUrlCustomizer extends GoalWithFulfillment {
     }
 }
 
-export function executePublishToS3Shim(inputParams: PublishToS3Options & UrlCustomizer): ExecuteGoal {
+export function executePublishToS3Shim(inputParams: PublishToS3Options & UrlCustomizerOptions): ExecuteGoal {
     const filesToPublishIndexShim = inputParams.filesToPublish.map(gp => gp.replace(/\/\*$/, "/index.html")).filter(gp => gp.endsWith("/index.html"));
 
     const ptWrapper = (tform: PathTranslation) => (filepath: string, gi: GoalInvocation) =>
-            (tform || ((fp) => fp))(!!inputParams.pathTranslation ? inputParams.pathTranslation(filepath, gi) : filepath, gi);
+        (tform || ((fp) => fp))(!!inputParams.pathTranslation ? inputParams.pathTranslation(filepath, gi) : filepath, gi);
 
     const shim1 = executePublishToS3({
         ...inputParams,
@@ -61,8 +61,8 @@ export function executePublishToS3Shim(inputParams: PublishToS3Options & UrlCust
         ...inputParams,
         filesToPublish: filesToPublishIndexShim,
         pathTranslation: ptWrapper((fp) => fp.replace('index.html', ''))
-            // (filepath: string, gi: GoalInvocation) =>
-            // !!inputParams.pathTranslation ? inputParams.pathTranslation(filepath, gi).replace('/index.html', '') : filepath,
+        // (filepath: string, gi: GoalInvocation) =>
+        // !!inputParams.pathTranslation ? inputParams.pathTranslation(filepath, gi).replace('/index.html', '') : filepath,
     });
     const main = executePublishToS3(inputParams);
 

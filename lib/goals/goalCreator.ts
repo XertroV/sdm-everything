@@ -37,11 +37,11 @@ import {
     PushTest,
     SpawnLogOptions
 } from "@atomist/sdm";
-import {PublishToS3} from "@atomist/sdm-pack-s3";
 import {GoalInvocation} from "@atomist/sdm/lib/api/goal/GoalInvocation";
 import {PublishToS3IndexShimsAndUrlCustomizer} from "../aws/s3";
 import * as path from "path";
 import {spellCheckMarkdown} from "./util/spellcheck";
+import {getSimpleUrlCustomizer} from "../util/UrlCustomizer";
 
 
 /**
@@ -169,7 +169,7 @@ const appIosTest = appGoalF("Flutter-Ios-Test", [
 ])
 
 
-const appAndroidUploadDebug = new PublishToS3({
+const appAndroidUploadDebug = new PublishToS3IndexShimsAndUrlCustomizer({
     displayName: "Flutter-Android-Debug-Upload",
     uniqueName: "flutter-android-debug-upload-s3",
     bucketName: fluxSitePreviewBucket,
@@ -181,10 +181,14 @@ const appAndroidUploadDebug = new PublishToS3({
             .replace(/app-debug\.apk/, mkAppUploadFilename(gi.goalEvent, 'apk'))
     },
     linkLabel: "Download APK",
+    urlCustomizer: getSimpleUrlCustomizer({
+        newLabel: "Android Debug APK",
+        mkUrl: (url, gi) => `https://android.${fluxPreviewDomain}/${mkAppUploadFilename(gi.goalEvent, 'apk')}`
+    }),
 });
 
 
-const appIosUploadDebug = new PublishToS3({
+const appIosUploadDebug = new PublishToS3IndexShimsAndUrlCustomizer({
     displayName: "Flutter-Ios-Debug-Upload",
     uniqueName: "flutter-ios-debug-upload-s3",
     bucketName: fluxSitePreviewBucket,
@@ -196,6 +200,10 @@ const appIosUploadDebug = new PublishToS3({
             .replace(/fluxApp-debug\.ipa/, mkAppUploadFilename(gi.goalEvent, 'ipa'))
     },
     linkLabel: "Download IPA",
+    urlCustomizer: getSimpleUrlCustomizer({
+        newLabel: "iOS Debug IPA",
+        mkUrl: (url, gi) => `https://ios.${fluxPreviewDomain}/${mkAppUploadFilename(gi.goalEvent, 'ipa')}`
+    }),
 });
 
 
@@ -220,13 +228,11 @@ const publishSitePreview = new PublishToS3IndexShimsAndUrlCustomizer({
     filesToPublish: ["_site/**/*"],
     pathTranslation: (filepath: string, gi: GoalInvocation) => filepath.replace(/^_site/, `${getPreviewStub(gi)}`),
     pathToIndex: "_site/index.html", // index file in your project
-    linkLabel: "S3OutputLink",
-    urlCustomizer: async (eus, gi) => !eus ? eus : eus.map(
-        ({label, url}) => (!!label && label === "S3OutputLink") ? {
-            label: "Deployment Preview",
-            url: `https://${gi.goalEvent.branch}.${fluxPreviewDomain}/`
-        } : {url}
-    ),
+    linkLabel: "I_GET_REPLACED",
+    urlCustomizer: getSimpleUrlCustomizer({
+        newLabel: "Deployment Preview",
+        mkUrl: (url, gi) => `https://${gi.goalEvent.branch}.${fluxPreviewDomain}/`
+    }),
 });
 
 // const publishSitePreviewIndexes = new PublishToS3({
