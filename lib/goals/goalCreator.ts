@@ -28,7 +28,7 @@ import {
 } from "./goals";
 import {goal, GoalWithFulfillment} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
 import {logger} from "@atomist/automation-client/lib/util/logger";
-import {asUnsafeSpawnCommand, batchSpawn, BatchSpawnLogArgs} from "../util/spawn";
+import {asUnsafeSpawnCommand, batchSpawn} from "../util/spawn";
 import {and} from "@atomist/sdm/lib/api/mapping/support/pushTestUtils";
 import {
     doWithProject, ProjectAwareGoalInvocation,
@@ -39,6 +39,7 @@ import {
 import {PublishToS3} from "@atomist/sdm-pack-s3";
 import {GoalInvocation} from "@atomist/sdm/lib/api/goal/GoalInvocation";
 import {PublishToS3IndexShimsAndUrlCustomizer} from "../aws/s3";
+import * as path from "path";
 
 
 /**
@@ -51,7 +52,7 @@ export const ptFalse: PushTest = mkPushTest("always False", async () => false);
 /**
  * [cmd, args, Opts?]
  */
-type SpawnLogModifiers = Partial<{ subdir: string | ((pagi: ProjectAwareGoalInvocation) => Promise<string>) }>
+type SpawnLogModifiers = Partial<{ subdir: string | ((pagi: ProjectAwareGoalInvocation) => string) }>
 type SpawnEntry = [string, string[], SpawnLogOptions?, SpawnLogModifiers?];
 
 const flutterEnv = {
@@ -84,7 +85,7 @@ const appGoalF = (
     }, doWithProject(async pagi => {
         const env = {...flutterEnv, /* PUB_CACHE: `${pagi.project.baseDir}` */};
         // logging, env vars, and working dir
-        const opts: SpawnLogOptions = {log: pagi.progressLog, cwd: pagi.project.baseDir};
+        const opts: SpawnLogOptions = {log: pagi.progressLog};
         // await spawnLog("mkdir", ["-p", ".pub-cache"], opts);
         // compose the commands to run, mixing in opts.
         const result = await batchSpawn(spawns.map(
@@ -92,9 +93,9 @@ const appGoalF = (
             ([cmd, args = [], otherOpts = {}, modifiers = {}]) => ([cmd, args, {
                 ...(opts),
                 ...(otherOpts),
-                cwd: (otherOpts.cwd || opts.cwd) + (
-                    !modifiers.subdir ? "" : (typeof modifiers.subdir === "string"
-                            ? modifiers.subdir : await modifiers.subdir(pagi)
+                cwd: path.join(otherOpts.cwd || pagi.project.baseDir,
+                    !modifiers.subdir ? "." : (
+                        typeof modifiers.subdir === "string" ? modifiers.subdir : modifiers.subdir(pagi)
                     )),
                 env: {...env, ...(otherOpts?.env || {}), /* PUB_CACHE: env.PUB_CACHE */},
             }])
