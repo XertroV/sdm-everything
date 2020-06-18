@@ -183,9 +183,11 @@ const appAndroidUploadDebug = new PublishToS3IndexShimsAndUrlCustomizer({
     },
     linkLabel: "I_GET_REPLACED",
     urlCustomizer: getSimpleUrlCustomizer({
+        labelToReplace: "I_GET_REPLACED",
         newLabel: "Android Debug APK",
         mkUrl: (url, gi) => `https://android.${fluxPreviewDomain}/${mkAppUploadFilename(gi.goalEvent, 'apk')}`
     }),
+    enableIndexShims: false,
 });
 
 
@@ -202,9 +204,11 @@ const appIosUploadDebug = new PublishToS3IndexShimsAndUrlCustomizer({
     },
     linkLabel: "I_GET_REPLACED",
     urlCustomizer: getSimpleUrlCustomizer({
+        labelToReplace: "I_GET_REPLACED",
         newLabel: "iOS Debug IPA",
         mkUrl: (url, gi) => `https://ios.${fluxPreviewDomain}/${mkAppUploadFilename(gi.goalEvent, 'ipa')}`
     }),
+    enableIndexShims: false,
 });
 
 
@@ -231,9 +235,11 @@ const publishSitePreview = new PublishToS3IndexShimsAndUrlCustomizer({
     pathToIndex: "_site/index.html", // index file in your project
     linkLabel: "I_GET_REPLACED",
     urlCustomizer: getSimpleUrlCustomizer({
+        labelToReplace: "I_GET_REPLACED",
         newLabel: "Deployment Preview",
         mkUrl: (url, gi) => `https://${gi.goalEvent.branch}.${fluxPreviewDomain}/`
     }),
+    enableIndexShims: true,
 });
 
 // const publishSitePreviewIndexes = new PublishToS3({
