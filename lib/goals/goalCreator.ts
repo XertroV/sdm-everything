@@ -147,7 +147,7 @@ const xcodebuildExportArchiveArgs = (exportOptsPlist: "debug" | "release" = "deb
     "-exportArchive",
     "-archivePath",
     "RunnerArchive.xcarchive",
-    " -exportPath",
+    "-exportPath",
     "./build",
     "-exportOptionsPlist",
     `./ciExportOptions/${exportOptsPlist}.plist`,
