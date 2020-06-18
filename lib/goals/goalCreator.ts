@@ -181,7 +181,7 @@ const appAndroidUploadDebug = new PublishToS3IndexShimsAndUrlCustomizer({
             .replace(/^build\/app\/outputs\/apk\/debug/, "android")
             .replace(/app-debug\.apk/, mkAppUploadFilename(gi.goalEvent, 'apk'))
     },
-    linkLabel: "Download APK",
+    linkLabel: "I_GET_REPLACED",
     urlCustomizer: getSimpleUrlCustomizer({
         newLabel: "Android Debug APK",
         mkUrl: (url, gi) => `https://android.${fluxPreviewDomain}/${mkAppUploadFilename(gi.goalEvent, 'apk')}`
@@ -200,7 +200,7 @@ const appIosUploadDebug = new PublishToS3IndexShimsAndUrlCustomizer({
             .replace(/^ios\/build/, "ios")
             .replace(/fluxApp-debug\.ipa/, mkAppUploadFilename(gi.goalEvent, 'ipa'))
     },
-    linkLabel: "Download IPA",
+    linkLabel: "I_GET_REPLACED",
     urlCustomizer: getSimpleUrlCustomizer({
         newLabel: "iOS Debug IPA",
         mkUrl: (url, gi) => `https://ios.${fluxPreviewDomain}/${mkAppUploadFilename(gi.goalEvent, 'ipa')}`
