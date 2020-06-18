@@ -175,7 +175,7 @@ const appAndroidUploadDebug = new PublishToS3IndexShimsAndUrlCustomizer({
     uniqueName: "flutter-android-debug-upload-s3",
     bucketName: fluxSitePreviewBucket,
     region: fluxSitePreviewBucketRegion, // use your region
-    filesToPublish: ["build/app/outputs/apk/debug/app-debug.apk", "build/app/outputs/apk/debug/fluxApp-latest.apk"], // , "build/app/outputs/apk/debug/app-debug.aab"],
+    filesToPublish: ["build/app/outputs/apk/debug/*.apk"], // , "build/app/outputs/apk/debug/app-debug.aab"],
     pathTranslation: (filepath: string, gi: GoalInvocation) => {
         return filepath
             .replace(/^build\/app\/outputs\/apk\/debug/, "android")
@@ -194,7 +194,7 @@ const appIosUploadDebug = new PublishToS3IndexShimsAndUrlCustomizer({
     uniqueName: "flutter-ios-debug-upload-s3",
     bucketName: fluxSitePreviewBucket,
     region: fluxSitePreviewBucketRegion,
-    filesToPublish: ["ios/build/fluxApp-latest.ipa", "ios/build/fluxApp-debug.ipa"],
+    filesToPublish: ["ios/build/fluxApp-*.ipa"],
     pathTranslation: (filepath: string, gi: GoalInvocation) => {
         return filepath
             .replace(/^ios\/build/, "ios")
