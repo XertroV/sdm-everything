@@ -58,6 +58,7 @@ const flutterEnv = {
     PATH: process.env.PATH, // `${process.env.HOME}/flutter/bin:${process.env.PATH}`,
     ANDROID_SDK_ROOT: process.env.ANDROID_SDK_ROOT, // `${process.env.HOME}/Android/Sdk`,
     ANDROID_HOME: process.env.ANDROID_SDK_ROOT,
+    HOME: process.env.HOME,
 }
 
 /**
