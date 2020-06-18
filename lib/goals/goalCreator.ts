@@ -119,7 +119,7 @@ const appAndroidBuild: GoalWithFulfillment = appGoalF("Flutter-Android-Build", [
     ["flutter", ["packages", "get"]],
     // ["flutter", ["clean"]],
     ["flutter", ["build", "apk", "--debug"]],
-    ["cp", ["build/app/outputs/apk/debug/app-debug.apk", "build/app/outputs/apk/debug/fluxApp-latest-build.apk"]],
+    ["cp", ["build/app/outputs/apk/debug/app-debug.apk", "build/app/outputs/apk/debug/fluxApp-latest.apk"]],
     ["ls", ["-al", "build/app/outputs/apk/debug/"]],
     ["ls", ["-al", "build/app/outputs/apk/"]],
 ])
@@ -130,14 +130,18 @@ const appAndroidSign: GoalWithFulfillment = appGoalF("Flutter-Android-Sign", [
 
 const appIosBuild = appGoalF("Flutter-Ios-Build", [
     ["flutter", ["precache"]],
-    ["flutter", ["packages", "get"]],
-    // ["flutter", ["clean"]],
-    ["./ci/_auto_testing-build-alt-macos.sh", []],
+    ["flutter", ["build", "ios", "--release", "--no-codesign"]],
+    ["xcodebuild", "clean archive -workspace Runner.xcworkspace -scheme Runner -archivePath RunnerArchive -allowProvisioningUpdates".split(" ")],
+    ["xcodebuild", "-exportArchive -archivePath RunnerArchive.xcarchive -exportOptionsPlist ciExportOptions/debug.plist -exportPath ./build".split(" ")],
+    ["cp", ["ios/build/Runner.ipa", "ios/build/fluxApp-debug.ipa"]],
+    ["cp", ["ios/build/Runner.ipa", "ios/build/fluxApp-latest.ipa"]],
+    // ["flutter", ["packages", "get"]],
+    // // ["flutter", ["clean"]],
+    // ["./ci/_auto_testing-build-alt-macos.sh", []],
 ])
 const appIosTest = appGoalF("Flutter-Ios-Test", [
     ["flutter", ["precache"]],
     ["flutter", ["packages", "get"]],
-    // ["flutter", ["clean"]],
     ["flutter", ["test"]],
 ])
 
@@ -147,13 +151,12 @@ const appAndroidUploadDebug = new PublishToS3({
     uniqueName: "flutter-android-debug-upload-s3",
     bucketName: fluxSitePreviewBucket,
     region: fluxSitePreviewBucketRegion, // use your region
-    filesToPublish: ["build/app/outputs/apk/debug/app-debug.apk", "build/app/outputs/apk/debug/fluxApp-latest-build.apk"], // , "build/app/outputs/apk/debug/app-debug.aab"],
+    filesToPublish: ["build/app/outputs/apk/debug/app-debug.apk", "build/app/outputs/apk/debug/fluxApp-latest.apk"], // , "build/app/outputs/apk/debug/app-debug.aab"],
     pathTranslation: (filepath: string, gi: GoalInvocation) => {
         return filepath
             .replace(/^build\/app\/outputs\/apk\/debug/, "android")
-            .replace(/app-debug.apk/, mkAppUploadFilename(gi.goalEvent, 'apk'))
+            .replace(/app-debug\.apk/, mkAppUploadFilename(gi.goalEvent, 'apk'))
     },
-    // pathToIndex: `android/fluxApp-latest-build.apk`, // index file in your project
     linkLabel: "Download APK",
 });
 
@@ -163,13 +166,12 @@ const appIosUploadDebug = new PublishToS3({
     uniqueName: "flutter-ios-debug-upload-s3",
     bucketName: fluxSitePreviewBucket,
     region: fluxSitePreviewBucketRegion,
-    filesToPublish: ["ios/build/*.ipa"],
+    filesToPublish: ["ios/build/fluxApp-*.ipa"],
     pathTranslation: (filepath: string, gi: GoalInvocation) => {
         return filepath
             .replace(/^ios\/build/, "ios")
-            .replace(/Runner\.ipa/, mkAppUploadFilename(gi.goalEvent, 'ipa'))
+            .replace(/fluxApp-debug\.ipa/, mkAppUploadFilename(gi.goalEvent, 'ipa'))
     },
-    // pathToIndex: `ios/fluxApp-latest.ipa}`, // index file in your project
     linkLabel: "Download IPA",
 });
 

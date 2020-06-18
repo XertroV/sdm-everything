@@ -76,7 +76,7 @@ type AppBuildForOs = keyof typeof osToAppExtension;
 //     const body = `### Build outputs for ${gi.id.sha}
 //
 // * Debug APK: <http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/${fname}>
-// <!-- * S3 Link: <http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/fluxApp-latest-build.apk> -->
+// <!-- * S3 Link: <http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/fluxApp-latest.apk> -->
 //
 // :tada:`;
 //     await gi.addressChannels(`Flux App Debug Build for ${gi.id.sha?.slice(0, 7)}: http://${fluxAppPreviewBucket}.s3.amazonaws.com/android/${fname}`);
