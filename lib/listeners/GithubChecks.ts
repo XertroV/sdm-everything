@@ -109,7 +109,7 @@ const fmtCodeFence = (codeStr?: string, lang?: string) => {
 
 
 function renderErrorObjMessage(geli: GoalExecutionListenerInvocation) {
-    return !!geli.error ? `## Error!\n\n### \`error.name\`: ${fmtCodeFence(geli.error?.name)}        
+    return !!geli.error ? `## Error!\n\n### \`error.name\`: \`${geli.error?.name}\`        
 
 #### \`error.message\`\n\n${fmtCodeFence(geli.error?.message)}
 
