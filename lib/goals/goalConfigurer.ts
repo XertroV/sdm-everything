@@ -40,7 +40,7 @@ export const flutterPubCache = mkCacheFuncs("flutter-pub-cache", {
                 ["flutter", ["precache"], opts],
                 ["flutter", ["packages", "get"], opts],
                 // ["flutter", ["pub", "cache", "repair"], opts],
-            ]);
+            ], {truncateLog: true, addFence: true});
         },
     }]
 }, ".pub-cache");

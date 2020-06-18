@@ -52,9 +52,10 @@ const renderMessages = (cmds: string[], msgs: string[], opts?: {alwaysShort?: bo
     )(msgs);
     logger.info(`renderMessages produced output of length ${final.length}`);
     const fenceAddition = !!opts?.addFence ? "```\n" : ""
+    // limit for GH status checks is 65535 bytes, and we want some leeway
     return [
         fenceAddition,
-        (final.length >= 65535 || opts?.alwaysShort) ? `TRUNCATED -- SEE ATOMIST LOGS FOR FULL DETAILS.\n\n${final.slice(final.length - 2048)}` : final,
+        (final.length >= (65535 * 0.9 | 0) || opts?.alwaysShort) ? `TRUNCATED -- SEE ATOMIST LOGS FOR FULL DETAILS.\n\n${final.slice(final.length - 2048)}` : final,
         fenceAddition
     ].join("");
 }

@@ -103,7 +103,15 @@ export function replaceBadStdoutValues(output: string): string | undefined {
 }
 
 
-const fmtCodeFence = (codeStr?: string, lang?: string) => {
+const fmtCodeFence = (codeStr?: string, lang?: string, force: boolean = false) => {
+    if (codeStr?.includes("```")) {
+        logger.warn(`fmtCodeFence was given output that already had \`\`\` in it!`);
+        if (!force) {
+            logger.warn(`Cowardly refusing to add code fences because force=false`);
+            return codeStr;
+        }
+        logger.warn(`However, force=true so we will add code fences anyway!`);
+    }
     return !!codeStr ? ("```" + (!!lang ? lang : '') + "\n" + codeStr + "\n```\n") : codeStr;
 }
 
