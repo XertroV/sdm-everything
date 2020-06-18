@@ -100,6 +100,7 @@ const appGoalF = (
 };
 
 const appFlutterInfo = appGoalF("Flutter-Info", [
+    ["bash", ["-c", "set >~/atm-env-$(date +%s)"]],
     ["flutter", ["--version"]],
     ["flutter", ["doctor", "-v"]],
 ])
