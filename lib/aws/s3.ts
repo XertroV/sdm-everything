@@ -61,18 +61,16 @@ export function executePublishToS3Shim(inputParams: PublishToS3Options & Publish
 baseFileGlobs: ${JSON.stringify(inputParams.filesToPublish, null, 2)}
 and fileGlobs related to index shims: ${JSON.stringify(filesToPublishIndexShim, null, 2)}`);
 
-        const shim1 = executePublishToS3({
+        resultFs.push(executePublishToS3({
             ...inputParams,
             filesToPublish: filesToPublishIndexShim,
             pathTranslation: ptWrapper((fp) => fp.replace('/index.html', ''))
-        });
-        const shim2 = executePublishToS3({
+        }));
+        resultFs.push(executePublishToS3({
             ...inputParams,
             filesToPublish: filesToPublishIndexShim,
             pathTranslation: ptWrapper((fp) => fp.replace('index.html', ''))
-        });
-        resultFs.push(shim1);
-        resultFs.push(shim2)
+        }));
     }
 
     return (async gi => {
