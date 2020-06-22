@@ -34,6 +34,7 @@
     "@atomist/sdm-pack-lifecycle-github": "0.2.0-master.20191120023515",
     "@atomist/sdm-pack-node": "^1.2.0-master.20191111164040",
     "@atomist/sdm-pack-s3": "file:atomist-sdm-pack-s3-0.5.1.tgz",
+    "@atomist/sdm-pack-version": "^0.1.1",
     "@atomist/slack-messages": "^1.1.1",
     "@graphql-codegen/core": "1.7.0",
     "@graphql-codegen/plugin-helpers": "1.7.0",

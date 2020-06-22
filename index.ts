@@ -41,7 +41,7 @@ import {EventFired} from "@atomist/automation-client/lib/HandleEvent";
 import {Destination, MessageOptions} from "@atomist/automation-client/lib/spi/message/MessageClient";
 import _ from "lodash/fp";
 import {hasMarkdown} from "./lib/goals/pushTests";
-import {pushTest} from "@atomist/sdm";
+import {doAppRelease} from "./lib/commands/appRelease";
 
 process.env.AWS_SDK_LOAD_CONFIG = "1";
 process.env.AWS_DEFAULT_REGION = "ap-southeast-2";
@@ -155,6 +155,11 @@ const configurer: Configurer<FluxGoals> = async (sdm): Promise<Record<string, Go
         new TestAutomationEventListener()
     );
 
+    // sdm.addTagListener
+
+    // Commands, should be runable by any b/c we won't rely on tools here.
+    sdm.addCommand(doAppRelease(sdm));
+
     const verifyIos = () => verifyAws()
     const verifyAndroid = () => !!process.env.ANDROID_SDK_ROOT && verifyAws()
     const verifyAws = () => !!process.env.AWS_PROFILE || !!process.env.AWS_ACCESS_KEY_ID
@@ -188,7 +193,6 @@ const configurer: Configurer<FluxGoals> = async (sdm): Promise<Record<string, Go
                 test: [
                     isFluxSiteRepo,
                     shouldRebuildSite,
-                    pushTest('never', async () => false),
                 ],
                 goals: [
                     [goals.siteBuild],
@@ -216,11 +220,18 @@ Valid options for env var SDM_FLUX_CHOICE: ${JSON.stringify(_.keys(choices), nul
 See index.ts for more.`);
     };
 
+    const nonemptyListOr = <T>(xs: Array<T>, def: () => Array<T>): Array<T> => {
+        if (xs.length === 0) {
+            return def();
+        }
+        return xs
+    }
+
     const processChoiceEnv = (): string[] => !process.env.SDM_FLUX_CHOICE
         ? usageError()
         : process.env.SDM_FLUX_CHOICE === "all"
             ? _.keys(choices)
-            : process.env.SDM_FLUX_CHOICE.split(",");
+            : nonemptyListOr(process.env.SDM_FLUX_CHOICE.split(",").filter(v => _.keys(choices).includes(v)), usageError);
 
     // const cs: Record<string, Record<string, GoalStructure>> = ;
     //_.map(_.get(0), choices);
@@ -253,6 +264,7 @@ const mkConfiguration = () => {
     };
 
     return configure<FluxGoals>(configurer, options);
+
 }
 
 
