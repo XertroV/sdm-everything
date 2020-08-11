@@ -24,11 +24,16 @@ import {isFlutterProject} from "./app/pushTests";
 import {batchSpawn} from "../util/spawn";
 import {mkCacheFuncs} from "../utils/cache";
 // @ts-ignore
-import {GoalExecutionListener, GoalProjectListenerEvent, SdmGoalState} from "@atomist/sdm";
+import {doWithProject, GoalExecutionListener, GoalProjectListenerEvent, SdmGoalState, spawnLog} from "@atomist/sdm";
 import {addCommentToRelevantPR, getGitHubApi} from "../util/github";
 import {logger} from "@atomist/automation-client";
 
+/**
+ * App Cache stuff
+ */
+
 /* todo: can we do this bit better/well? Use PUB_CACHE to set cache location */
+/* NOTE: *NOT* currently used, broken */
 export const flutterPubCache = mkCacheFuncs("flutter-pub-cache", {
     pushTest: isFlutterProject,
     onCacheMiss: [{
@@ -58,6 +63,20 @@ const flutterReleaseIpaCache = mkCacheFuncs("flutter-build-ipa-release", {
 const flutterDebugIpaCache = mkCacheFuncs("flutter-build-ipa-debug", {
     pushTest: isFlutterProject,
 }, "ios/build/");
+
+
+
+/**
+ * Cache funcs for jekyll build outputs (i.e. _site)
+ */
+const jekyllCache = mkCacheFuncs("_site", {}, "_site");
+const elmStuffCache = mkCacheFuncs("elm-stuff", {}, "elm-stuff");
+const npmCache = mkCacheFuncs("node_modules", {}, "node_modules");
+
+
+/**
+ * Some app stuff
+ */
 
 
 const osToAppExtension = {
@@ -110,22 +129,21 @@ const flutterIosUploadDebugGithubPRComment: GoalExecutionListener = flutterUploa
  * Website Goal Config data
  */
 
-/**
- * Cache funcs for jekyll build outputs (i.e. _site)
- */
-const jekyllCache = mkCacheFuncs("_site", {}, "_site");
-const elmStuffCache = mkCacheFuncs("elm-stuff", {}, "elm-stuff");
-const npmCache = mkCacheFuncs("node_modules", {}, "node_modules");
-
 
 const DeployPreviewPRComment: GoalExecutionListener = async (gi): Promise<void> => {
     if (gi.goalEvent.state !== "success") {
         return;
     }
 
+    // if (!gi.result?.externalUrls) {
+    //     throw new Error("no external urls provided, cannot make github comment")
+    // }
+
+    // logger.warn(`deploy preview goal event (should have state:success): ${JSON.stringify(gi.goalEvent)}`)
+
     const shaStub = gi.id.sha?.slice(0, 7);
-    const renderedMdUrls = gi.result?.externalUrls?.map(eu => `* ${eu.label || eu.url} <${eu.url}>`);
-    const renderedSlackUrls = gi.result?.externalUrls?.map(eu => `* <${eu.url}|${eu.label || eu.url}>`);
+    const renderedMdUrls = gi.result?.externalUrls?.map(eu => `* ${eu.label || eu.url} <${eu.url}>`).join("\n");
+    const renderedSlackUrls = gi.result?.externalUrls?.map(eu => `* <${eu.url}|${eu.label || eu.url}>`).join("\n");
 
     logger.debug(`renderedMdUrls: ${renderedMdUrls}`);
     logger.debug(JSON.stringify(gi.result?.externalUrls));

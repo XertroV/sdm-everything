@@ -226,7 +226,7 @@ const buildWebsite = new Build({displayName: "Jekyll Build"}).with({
 
 
 const publishSitePreview = new PublishToS3IndexShimsAndUrlCustomizer({
-    displayName: "Publish to S3",
+    displayName: "Publish-to-S3",
     uniqueName: "publish-preview-to-s3",
     bucketName: fluxSitePreviewBucket,
     region: fluxSitePreviewBucketRegion, // use your region
@@ -239,7 +239,7 @@ const publishSitePreview = new PublishToS3IndexShimsAndUrlCustomizer({
         newLabel: "Deployment Preview",
         mkUrl: (url, gi) => `https://${gi.goalEvent.branch}.${fluxPreviewDomain}/`
     }),
-    enableIndexShims: true,
+    enableIndexShims: false
 });
 
 // const publishSitePreviewIndexes = new PublishToS3({

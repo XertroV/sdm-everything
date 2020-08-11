@@ -181,6 +181,7 @@ export const buildWebsiteBuilder = spawnBuilder({
     commands: [
         "docker build -f ./_docker-dev/Dockerfile -t flux-website-docker-dev:latest .",
         mkBashCommand("docker run --rm --mount type=volume,src=flux-site-vol-node,dst=/src/node_modules --mount type=volume,src=flux-site-vol-bundle-gems,dst=/src/.bundle-gems --mount type=volume,src=flux-site-vol-bundle,dst=/src/.bundle --mount type=bind,src=$PWD,dst=/src --env NODE_ENV=production flux-website-docker-dev:latest bash -c \"npm run --silent build || (npm i && npm run build)\""),
+        "ls -al _site",
     ].map(toSpawnCommand)
 });
 
