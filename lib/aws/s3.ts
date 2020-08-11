@@ -55,6 +55,7 @@ export function executePublishToS3Shim(inputParams: PublishToS3Options & Publish
 
     // main s3 push execution
     const resultFs = [executePublishToS3(inputParams)];
+
     if (inputParams.enableIndexShims) {
         const filesToPublishIndexShim = inputParams.filesToPublish.filter(gp => gp.endsWith("/*")).map(gp => gp.slice(0, gp.length - 2) + "/index.html").filter(gp => gp.endsWith("/index.html"));
         logger.info(`executePublishToS3Shim:
@@ -75,6 +76,7 @@ and fileGlobs related to index shims: ${JSON.stringify(filesToPublishIndexShim, 
 
     return (async gi => {
         // const [mainRes, s1Res, s2Res]
+        // list of results from executePublishToS3 which are functions like this one, so we pass in our `gi`
         const ress = await Promise.all(resultFs.map(f => f(gi)));
         const codes = ress.map(r => _.get(r, 'code')).filter(c => c !== undefined);
         const nonZeroCodes = codes.filter(c => c !== 0)
@@ -85,7 +87,7 @@ and fileGlobs related to index shims: ${JSON.stringify(filesToPublishIndexShim, 
         return {
             code: nonZeroCodes.length > 0 ? nonZeroCodes[0] : 0,
             externalUrls,
-            message: _.map(ress, r => _.get(r, 'message', "<no output>")).join('\n\n')
+            message: _.map(ress, r => _.get(r, 'message', `<s3 upload job: no output; urls: ${JSON.stringify(_.get(r, 'externalUrls') || [])}>`)).join('\n\n')
         }
     })
 }

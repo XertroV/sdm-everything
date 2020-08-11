@@ -2,7 +2,6 @@ import {CommandHandlerRegistration, SoftwareDeliveryMachine} from "@atomist/sdm"
 // import {Parameters, Secret, Secrets} from "@atomist/automation-client/lib/decorators";
 import {NoParameters} from "@atomist/automation-client";
 
-//
 // @Parameters()
 // export class ReleaseParams {
 //     @Secret(Secrets.OrgToken)
@@ -17,7 +16,6 @@ const releaseDesc: {[k in ReleaseTypes]: string} = {
     major:     "bumps version on x.**Y**.z+n -- used for MAJOR releases (big new features, like upgrading the blockchain layer)",
     minor:     "bumps version on x.y.**Z**+n -- used for MINOR releases (smaller features, large bugfixes)",
     buildn:    "bumps version on x.y.z+**N** -- used for BUGFIX releases (super minor changes)",
-
 }
 
 export function doAppRelease(sdm: SoftwareDeliveryMachine): CommandHandlerRegistration<NoParameters> {

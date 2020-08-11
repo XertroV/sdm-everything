@@ -113,9 +113,9 @@ const flutterIosUploadDebugGithubPRComment: GoalExecutionListener = flutterUploa
 /**
  * Cache funcs for jekyll build outputs (i.e. _site)
  */
-const jekyllCache = mkCacheFuncs("_site");
-const elmStuffCache = mkCacheFuncs("elm-stuff");
-const npmCache = mkCacheFuncs("node_modules");
+const jekyllCache = mkCacheFuncs("_site", {}, "_site");
+const elmStuffCache = mkCacheFuncs("elm-stuff", {}, "elm-stuff");
+const npmCache = mkCacheFuncs("node_modules", {}, "node_modules");
 
 
 const DeployPreviewPRComment: GoalExecutionListener = async (gi): Promise<void> => {
@@ -124,8 +124,12 @@ const DeployPreviewPRComment: GoalExecutionListener = async (gi): Promise<void> 
     }
 
     const shaStub = gi.id.sha?.slice(0, 7);
-    const renderedMdUrls = gi.result?.externalUrls?.map(eu => `* ${eu.label || ""} <${eu.url}>`);
-    const renderedSlackUrls = gi.result?.externalUrls?.map(eu => `* <${eu.url}|${eu.label || ""}>`);
+    const renderedMdUrls = gi.result?.externalUrls?.map(eu => `* ${eu.label || eu.url} <${eu.url}>`);
+    const renderedSlackUrls = gi.result?.externalUrls?.map(eu => `* <${eu.url}|${eu.label || eu.url}>`);
+
+    logger.debug(`renderedMdUrls: ${renderedMdUrls}`);
+    logger.debug(JSON.stringify(gi.result?.externalUrls));
+    logger.debug(JSON.stringify(gi.result));
 
     const body = `### Deploy Preview for branch ${gi.goalEvent.branch}
     
@@ -196,7 +200,6 @@ export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) 
 
     siteBuild
         .withExecutionListener(GitHubChecksListener)
-        .withExecutionListener(DeployPreviewPRComment)
         .withProjectListener(npmCache.put)
         .withProjectListener(npmCache.restore)
         .withProjectListener(elmStuffCache.put)
@@ -205,7 +208,8 @@ export const FluxGoalConfigurer: GoalConfigurer<FluxGoals> = async (sdm, goals) 
 
     sitePushS3
         .withExecutionListener(GitHubChecksListener)
-        .withProjectListener(jekyllCache.restore);
+        .withProjectListener(jekyllCache.restore)
+        .withExecutionListener(DeployPreviewPRComment);
     // goals.sitePushS3Indexes
     //     // .withExecutionListener(GitHubChecksListener)
     //     .withProjectListener(jekyllCache.restore);
