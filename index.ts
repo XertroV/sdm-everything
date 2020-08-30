@@ -26,8 +26,8 @@ import {FluxGoalCreator} from "./lib/goals/goalCreator";
 import {FluxGoals} from "./lib/goals/goals";
 import {isFluxSiteRepo, shouldRebuildSite} from "./lib/machine";
 import {logger} from "@atomist/automation-client/lib/util/logger";
-// import {githubGoalStatusSupport} from "@atomist/sdm-core";
-// import { githubLifecycleSupport } from "@atomist/sdm-pack-lifecycle-github";
+import {githubGoalStatusSupport} from "@atomist/sdm-core";
+import { githubLifecycleSupport } from "@atomist/sdm-pack-lifecycle-github";
 import {isFlutterProject} from "./lib/goals/app/pushTests";
 import {
     CommandIncoming, EventIncoming,
@@ -134,8 +134,8 @@ const configurer: Configurer<FluxGoals> = async (sdm): Promise<Record<string, Go
     };
 
     sdm.addExtensionPacks(
-        // githubLifecycleSupport(),
-        // githubGoalStatusSupport(),
+        githubLifecycleSupport(),
+        githubGoalStatusSupport(),
     );
 
     // Use the sdm instance to configure commands etc
@@ -171,8 +171,7 @@ const configurer: Configurer<FluxGoals> = async (sdm): Promise<Record<string, Go
                 goals: [
                     goals.appFlutterInfo,
                     goals.appIosBuild,
-                    goals.appIosTest,
-                    goals.appIosUploadDebug,
+                    [goals.appIosTest, goals.appIosUploadDebug],
                 ]
             },
         }, verifyIos],
@@ -184,8 +183,7 @@ const configurer: Configurer<FluxGoals> = async (sdm): Promise<Record<string, Go
                 goals: [
                     goals.appFlutterInfo,
                     goals.appAndroidBuild,
-                    [goals.appAndroidTest],
-                    [goals.appAndroidUploadDebug],
+                    [goals.appAndroidTest, goals.appAndroidUploadDebug],
                     // goals.appAndroidSign,
                 ]
             },
