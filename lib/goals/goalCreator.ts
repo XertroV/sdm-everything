@@ -107,8 +107,18 @@ const appGoalF = (
     }), {pushTest});
 };
 
+const cmdsBeforeFlutterBuildOrTest = [
+    ["flutter", ["upgrade"]],
+    ["flutter", ["--version"]],
+    ["flutter", ["doctor", "-v"]],
+    ["flutter", ["precache"]],
+    ["flutter", ["packages", "get"]],
+];
+
+// todo - can deprecate this, use cmdsBeforeFlutterBuildOrTest instead as part of other goals
 const appFlutterInfo = appGoalF("Flutter-Info", [
     // ["bash", ["-c", "set >~/atm-env-$(date +%s)"]],
+    ["flutter", ["upgrade"]],
     ["flutter", ["--version"]],
     ["flutter", ["doctor", "-v"]],
 ])
@@ -116,15 +126,12 @@ const appAndroidTest = appGoalF("Flutter-Android-Test", [
     // ["env", []],
     // ["pwd", []],
     // ["ls", ["-al"]],
-    ["flutter", ["precache"]],
-    ["flutter", ["packages", "get"]],
+    ...cmdsBeforeFlutterBuildOrTest,
     ["flutter", ["test"]]
 ]);
 const appAndroidBuild: GoalWithFulfillment = appGoalF("Flutter-Android-Build", [
     // ["env", []],
-    // ["pwd", []],
-    ["flutter", ["precache"]],
-    ["flutter", ["packages", "get"]],
+    ...cmdsBeforeFlutterBuildOrTest,
     // ["flutter", ["clean"]],
     ["flutter", ["build", "apk", "--debug"]],
     ["cp", ["build/app/outputs/apk/debug/app-debug.apk", "build/app/outputs/apk/debug/fluxApp-latest.apk"]],
@@ -154,7 +161,7 @@ const xcodebuildExportArchiveArgs = (exportOptsPlist: "debug" | "release" = "deb
     "-allowProvisioningUpdates",
 ]
 const appIosBuild = appGoalF("Flutter-Ios-Build", [
-    ["flutter", ["precache"]],
+    ...cmdsBeforeFlutterBuildOrTest,
     // if we use --debug instead of --release it includes all the dev symbols, etc
     // and --no-codesign is okay because we add that later with the xcodebuild commands.
     ["flutter", ["build", "ios", "--release", "--no-codesign"]],
@@ -164,8 +171,7 @@ const appIosBuild = appGoalF("Flutter-Ios-Build", [
     ["cp", ["ios/build/Runner.ipa", "ios/build/fluxApp-latest.ipa"]],
 ])
 const appIosTest = appGoalF("Flutter-Ios-Test", [
-    ["flutter", ["precache"]],
-    ["flutter", ["packages", "get"]],
+    ...cmdsBeforeFlutterBuildOrTest,
     ["flutter", ["test"]],
 ])
 
