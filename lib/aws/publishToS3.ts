@@ -97,13 +97,13 @@ export function executePublishToS3(inputParams: PublishToS3Options): ExecuteGoal
                     logger.info(`No AWS keys in SDM configuration, falling back to default credentials`);
                     s3 = new AWS.S3();
                 }
-                logger.warn(`mys3 getFiles _site: ${await inv.project.getFiles("_site")}`);
-                //@ts-ignore
-                logger.warn(`project.cachedFiles: ${inv.project.cachedFiles}`)
+                // logger.warn(`mys3 getFiles _site: ${await inv.project.getFiles("_site")}`);
+                // //@ts-ignore
+                // logger.warn(`project.cachedFiles: ${inv.project.cachedFiles}`)
                 //@ts-ignore
                 inv.project.cachedFiles = undefined;
-                logger.warn(`mys3 getFiles _site: ${await inv.project.getFiles("_site")}`);
-                logger.warn(`mys3 getFiles: ${await inv.project.getFiles()}`);
+                // logger.warn(`mys3 getFiles _site: ${await inv.project.getFiles("_site")}`);
+                // logger.warn(`mys3 getFiles: ${await inv.project.getFiles()}`);
                 const result = await pushToS3(s3, inv, params);
 
                 let linkToIndex: string | undefined;

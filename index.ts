@@ -195,7 +195,7 @@ const configurer: Configurer<FluxGoals> = async (sdm): Promise<Record<string, Go
                     shouldRebuildSite,
                 ],
                 goals: [
-                    // [goals.siteSpellcheck, goals.siteBuild],
+                    [goals.siteSpellcheck, goals.siteBuild],
                     [goals.sitePushS3],
                     // [goals.siteGenPreviewPng, goals.sitePushS3],
                     // goals.siteDeployPreviewCloudFront,
@@ -206,7 +206,7 @@ const configurer: Configurer<FluxGoals> = async (sdm): Promise<Record<string, Go
                     hasMarkdown
                 ],
                 goals: [
-                    // goals.siteSpellcheck
+                    goals.siteSpellcheck
                 ]
             }
         }, verifyAws]

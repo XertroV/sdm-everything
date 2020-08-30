@@ -239,7 +239,7 @@ const publishSitePreview = new PublishToS3IndexShimsAndUrlCustomizer({
         newLabel: "Deployment Preview",
         mkUrl: (url, gi) => `https://${gi.goalEvent.branch}.${fluxPreviewDomain}/`
     }),
-    enableIndexShims: false
+    enableIndexShims: true
 });
 
 // const publishSitePreviewIndexes = new PublishToS3({
