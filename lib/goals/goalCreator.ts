@@ -107,7 +107,7 @@ const appGoalF = (
     }), {pushTest});
 };
 
-const cmdsBeforeFlutterBuildOrTest = [
+const cmdsBeforeFlutterBuildOrTest: SpawnEntry[] = [
     ["flutter", ["upgrade"]],
     ["flutter", ["--version"]],
     ["flutter", ["doctor", "-v"]],
