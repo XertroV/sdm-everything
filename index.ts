@@ -170,8 +170,8 @@ const configurer: Configurer<FluxGoals> = async (sdm): Promise<Record<string, Go
                 test: [isFlutterProject],
                 goals: [
                     goals.appFlutterInfo,
-                    goals.appIosBuild,
-                    [goals.appIosUploadDebug, goals.appIosTest],
+                    [goals.appIosTest, goals.appIosBuild],
+                    [goals.appIosUploadDebug],
                 ]
             },
         }, verifyIos],
@@ -182,8 +182,8 @@ const configurer: Configurer<FluxGoals> = async (sdm): Promise<Record<string, Go
                 ],
                 goals: [
                     goals.appFlutterInfo,
-                    goals.appAndroidBuild,
-                    [goals.appAndroidTest, goals.appAndroidUploadDebug],
+                    [goals.appAndroidTest, goals.appAndroidBuild],
+                    [goals.appAndroidUploadDebug],
                     // goals.appAndroidSign,
                 ]
             },
