@@ -44,7 +44,7 @@
     "@octokit/auth": "^2.0.0",
     "@types/js-base64": "^2.3.1",
     "@types/puppeteer": "^3.0.0",
-    "aws-sdk": "^2.689.0",
+    "aws-sdk": "^2.814.0",
     "bufferutil": "^4.0.1",
     "discord.js": "^12.2.0",
     "js-base64": "^2.5.2",
